@@ -1,0 +1,142 @@
+import { useMemo } from 'react'
+import type { CSSProperties } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { DAYS, MONTHS, fmtDuration, fromIso, pad, toMin, weekday } from '@shared/dates'
+import { SLOT_ORDER, countOf, dayProgress, isActiveOn } from '@shared/habits'
+import { useStore } from '@/state/store'
+import { useEventIndex, useMinute, useToday } from '@/state/hooks'
+import { toggleEvent } from '@/state/actions'
+import { HabitTile } from './HabitTile'
+import { AnimatedNumber, Check, Ring, cx } from './primitives'
+
+/** HH:MM with rolling digits; the seconds bar is a pure CSS animation synced once per minute. */
+function Clock() {
+  const now = new Date(useMinute())
+  const text = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+  return (
+    <div className="clock" aria-label={`Son las ${text}`}>
+      <div className="clock-digits" aria-hidden="true">
+        {Array.from(text).map((c, i) => (
+          <span key={i} className={cx('clock-slot', c === ':' && 'is-colon')}>
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span key={c} initial={{ y: '-100%' }} animate={{ y: '0%' }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}>
+                {c}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+        ))}
+      </div>
+      <span className="clock-sec" key={text} style={{ animationDelay: `-${new Date().getSeconds()}s` } as CSSProperties} />
+    </div>
+  )
+}
+
+export function TodayPanel() {
+  const today = useToday()
+  const minute = useMinute()
+  const idx = useEventIndex()
+  const habits = useStore(s => s.data!.habits)
+  const log = useStore(s => s.data!.habitLog)
+  const openDay = useStore(s => s.openDay)
+  const openSheet = useStore(s => s.openSheet)
+  const events = idx.get(today) ?? []
+  const d = fromIso(today)
+
+  const nowMin = new Date(minute).getHours() * 60 + new Date(minute).getMinutes()
+  const current = events.find(e => e.start && !e.done && toMin(e.start) <= nowMin && nowMin < toMin(e.end))
+  const next = events.find(e => e.start && !e.done && toMin(e.start) > nowMin)
+  const focus = current ?? next
+
+  const active = useMemo(
+    () => habits.filter(h => isActiveOn(h, today)).sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot)),
+    [habits, today],
+  )
+  const hp = dayProgress(habits, log, today)
+  const total = events.length + hp.total
+  const done = events.filter(e => e.done).length + hp.done
+  const pct = total ? Math.round((done / total) * 100) : 0
+
+  return (
+    <aside className="today" aria-label="Hoy">
+      <Clock />
+      <button type="button" className="today-date" onClick={() => openDay(today)}>
+        {DAYS[weekday(d)]} {d.getDate()} de {MONTHS[d.getMonth()]}
+      </button>
+
+      <div className="today-progress">
+        <Ring value={total ? done / total : 0} size={58} stroke={5} color="var(--accent)">
+          <AnimatedNumber value={pct} suffix="%" />
+        </Ring>
+        <div>
+          <b>{total ? `${done} de ${total} hechos` : 'Día libre'}</b>
+          <span>{events.length} eventos · {hp.total} hábitos</span>
+        </div>
+      </div>
+
+      <AnimatePresence mode="wait" initial={false}>
+        {focus && (
+          <motion.button
+            key={focus.id + (current ? 'now' : 'next')}
+            type="button"
+            className={cx('focus-card', current && 'is-now')}
+            style={{ '--c': `var(--cat-${focus.cat})` } as CSSProperties}
+            onClick={() => openSheet({ kind: 'event', event: focus })}
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10 }}
+            whileHover={{ y: -2 }}
+          >
+            <span className="focus-label">
+              {current ? <><i className="live" />Ahora · quedan {fmtDuration(toMin(focus.end) - nowMin)}</> : <>Siguiente · en {fmtDuration(toMin(focus.start) - nowMin)}</>}
+            </span>
+            <span className="focus-title">{focus.text}</span>
+            <span className="focus-time">{focus.start}–{focus.end}</span>
+            {current && (
+              <span className="focus-bar"><span style={{ transform: `scaleX(${(nowMin - toMin(focus.start)) / Math.max(1, toMin(focus.end) - toMin(focus.start))})` }} /></span>
+            )}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <section className="today-section">
+        <h3>Agenda</h3>
+        {events.length ? (
+          <ul className="agenda">
+            <AnimatePresence initial={false}>
+              {events.map(e => (
+                <motion.li
+                  key={e.id}
+                  layout
+                  className={cx('agenda-item', e.done && 'is-done', e.start && toMin(e.end) <= nowMin && 'is-past')}
+                  style={{ '--c': `var(--cat-${e.cat})` } as CSSProperties}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <button type="button" className="tick" onClick={ev => toggleEvent(e, ev.currentTarget)} aria-label={e.done ? 'Marcar pendiente' : 'Marcar hecho'}>
+                    <Check on={e.done} size={11} />
+                  </button>
+                  <button type="button" className="agenda-text" onClick={() => openSheet({ kind: 'event', event: e })}>
+                    <time>{e.start || '—'}</time>
+                    <span>{e.text}</span>
+                  </button>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        ) : (
+          <p className="empty">Nada planeado. Pulsa N para añadir algo.</p>
+        )}
+      </section>
+
+      {active.length > 0 && (
+        <section className="today-section">
+          <h3>Hábitos de hoy</h3>
+          <div className="today-habits">
+            {active.map(h => <HabitTile key={h.id} habit={h} date={today} count={countOf(log, h.id, today)} future={false} dense />)}
+          </div>
+        </section>
+      )}
+    </aside>
+  )
+}

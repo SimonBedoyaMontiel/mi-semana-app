@@ -1,0 +1,88 @@
+/*
+ * Mi Semana — design tokens
+ * Concrete greys with one electric cobalt and a vermilion signal. Display type is a variable-width
+ * grotesque that moves; body text stays quiet. Theme follows Windows via nativeTheme.themeSource.
+ */
+:root {
+  color-scheme: light;
+
+  --bg: #e4e5e8;
+  --bg-2: #dcdde1;
+  --surface: #eeeff2;
+  --raised: #fbfbfc;
+  --ink: #0e0f13;
+  --ink-2: #3a3d46;
+  --muted: #6b6f7b;
+  --faint: #9a9eaa;
+  --line: #cdd0d6;
+  --line-2: #dfe1e5;
+
+  --accent: #2337ff;
+  --accent-soft: #dfe2ff;
+  --on-accent: #ffffff;
+  --signal: #ff4a1c;
+
+  --cobalt: #2337ff;
+  --vermilion: #ff4a1c;
+  --amber: #e09a00;
+  --green: #109a4c;
+  --teal: #00968f;
+  --violet: #7a3cff;
+  --magenta: #d81b7f;
+
+  --cat-trabajo: var(--cobalt);
+  --cat-estudio: var(--violet);
+  --cat-salud: var(--green);
+  --cat-personal: var(--vermilion);
+  --cat-otro: #8a8e99;
+
+  --f-display: 'Anybody Variable', 'Arial Narrow', 'Segoe UI', sans-serif;
+  --f-body: 'Instrument Sans Variable', 'Segoe UI', system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono Variable', 'Cascadia Mono', Consolas, monospace;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --shadow-1: 0 1px 0 rgb(14 15 19 / 0.03), 0 1px 3px rgb(14 15 19 / 0.06);
+  --shadow-2: 0 14px 34px -14px rgb(14 15 19 / 0.32), 0 3px 8px rgb(14 15 19 / 0.06);
+  --shadow-3: 0 40px 90px -30px rgb(14 15 19 / 0.5), 0 8px 24px rgb(14 15 19 / 0.1);
+
+  --titlebar: 48px;
+  --controls: 144px; /* native window buttons drawn by Windows */
+  --sidebar: 340px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0c0d10;
+    --bg-2: #0f1014;
+    --surface: #181a20;
+    --raised: #14161b;
+    --ink: #edeef2;
+    --ink-2: #c3c6cf;
+    --muted: #8d92a0;
+    --faint: #5d6270;
+    --line: #2a2e38;
+    --line-2: #1f222a;
+
+    --accent: #6170ff;
+    --accent-soft: #1d2152;
+    --on-accent: #ffffff;
+    --signal: #ff6a3d;
+
+    --cobalt: #6170ff;
+    --vermilion: #ff6a3d;
+    --amber: #f5b630;
+    --green: #2fc875;
+    --teal: #22c4bb;
+    --violet: #9b6bff;
+    --magenta: #ff4fa8;
+    --cat-otro: #7d8290;
+
+    --shadow-1: 0 1px 0 rgb(0 0 0 / 0.3);
+    --shadow-2: 0 18px 40px -16px rgb(0 0 0 / 0.75), 0 2px 6px rgb(0 0 0 / 0.4);
+    --shadow-3: 0 40px 100px -30px rgb(0 0 0 / 0.9), 0 8px 24px rgb(0 0 0 / 0.5);
+  }
+}

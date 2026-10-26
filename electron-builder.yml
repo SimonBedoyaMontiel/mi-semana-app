@@ -1,0 +1,31 @@
+appId: app.misemana.desktop
+productName: Mi Semana
+copyright: Mi Semana
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+asar: true
+compression: maximum
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+  executableName: MiSemana
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Mi Semana
+  artifactName: MiSemana-Setup-${version}.${ext}
+  deleteAppDataOnUninstall: false
+electronLanguages:
+  - es
+  - es-419
+  - en-US

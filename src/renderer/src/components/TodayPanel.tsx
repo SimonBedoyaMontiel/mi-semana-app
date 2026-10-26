@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { DAYS, MONTHS, fmtDuration, fromIso, pad, toMin, weekday } from '@shared/dates'
 import { SLOT_ORDER, countOf, dayProgress, isActiveOn } from '@shared/habits'
 import { useStore } from '@/state/store'
-import { useEventIndex, useMinute, useToday } from '@/state/hooks'
+import { useEventIndex, useMinute, useNarrow, useToday } from '@/state/hooks'
 import { toggleEvent } from '@/state/actions'
 import { HabitTile } from './HabitTile'
 import { AnimatedNumber, Check, Ring, cx } from './primitives'
@@ -33,6 +33,7 @@ function Clock() {
 
 export function TodayPanel() {
   const today = useToday()
+  const narrow = useNarrow()
   const minute = useMinute()
   const idx = useEventIndex()
   const habits = useStore(s => s.data!.habits)
@@ -125,7 +126,7 @@ export function TodayPanel() {
             </AnimatePresence>
           </ul>
         ) : (
-          <p className="empty">Nada planeado. Pulsa N para añadir algo.</p>
+          <p className="empty">{narrow ? 'Nada planeado. Toca + para añadir algo.' : 'Nada planeado. Pulsa N para añadir algo.'}</p>
         )}
       </section>
 

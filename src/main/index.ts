@@ -10,6 +10,8 @@ import { ReminderService } from './reminders'
 import { registerIpc } from './ipc'
 import { createTray } from './tray'
 import { createMainWindow, rendererEntry } from './window'
+import { SyncService } from './sync'
+import { Updater } from './updater'
 
 const APP_ID = 'app.misemana.desktop'
 const startedHidden = process.argv.includes('--hidden')
@@ -39,6 +41,20 @@ if (!app.requestSingleInstanceLock()) {
   }
 
   const reminders = new ReminderService(() => repo.snapshot, date => send(IPC.openDate, date), iconPath)
+  const toWindow = (channel: string, payload: unknown): void => {
+    if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
+  }
+  const cloudConfig = import.meta.env.MAIN_VITE_SUPABASE_URL && import.meta.env.MAIN_VITE_SUPABASE_KEY
+    ? { url: import.meta.env.MAIN_VITE_SUPABASE_URL, key: import.meta.env.MAIN_VITE_SUPABASE_KEY }
+    : null
+  const sync = new SyncService(
+    repo,
+    app.getPath('userData'),
+    cloudConfig,
+    status => toWindow(IPC.syncStatus, status),
+    data => toWindow(IPC.external, data),
+  )
+  const updater = new Updater(status => toWindow(IPC.updateStatus, status))
 
   const applySettings = (s: Settings): void => {
     nativeTheme.themeSource = s.theme
@@ -78,8 +94,11 @@ if (!app.requestSingleInstanceLock()) {
       win = null
     })
 
-    registerIpc(repo, reminders, () => win)
+    registerIpc({ repo, reminders, sync, updater, getWindow: () => win, quit: () => (quitting = true) })
     reminders.start()
+    win.on('focus', () => sync.schedule(800))
+    void sync.init()
+    updater.start()
     createTray(iconPath, {
       show,
       newEvent: () => send(IPC.shortcut, 'new-event' satisfies ShortcutAction),
@@ -93,6 +112,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => {
     quitting = true
     reminders.stop()
+    sync.stop()
     repo.flushSync()
   })
 

@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import type { CalendarEvent, Category } from '@shared/model'
-import { CATEGORIES, CATEGORY_LABEL, REMINDER_CHOICES } from '@shared/constants'
-import { fmtDuration, fromMin, toMin, todayIso } from '@shared/dates'
+import type { CalendarEvent, Category, Repeat } from '@shared/model'
+import { CATEGORIES, CATEGORY_LABEL, REMINDER_CHOICES, REPEAT_FREQS, REPEAT_LABEL } from '@shared/constants'
+import type { EventItem } from '@shared/events'
+import { DAYS, DAYS_LETTER, fmtDuration, fromIso, fromMin, longDate, toMin, todayIso, weekday } from '@shared/dates'
 import type { EventPreset } from '@/state/store'
-import { useStore } from '@/state/store'
+import { rawEvent, useStore } from '@/state/store'
 import { deleteEvent, saveEvent } from '@/state/actions'
+import type { Scope } from '@/state/actions'
 import { newId } from '@/lib/fx'
 import { Sheet } from '@/components/Sheet'
 import { Chip, Segmented } from '@/components/primitives'
@@ -14,6 +16,8 @@ import { TimeField } from '@/components/TimeField'
 
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180]
 const LAST = 23 * 60 + 59
+type Freq = 'none' | Repeat['freq']
+const UNIT: Record<Repeat['freq'], [string, string]> = { daily: ['día', 'días'], weekly: ['semana', 'semanas'], monthly: ['mes', 'meses'] }
 
 function defaultStart(date: string): string {
   if (date !== todayIso()) return '09:00'
@@ -21,12 +25,25 @@ function defaultStart(date: string): string {
   return fromMin(Math.min(23 * 60, Math.ceil((n.getHours() * 60 + n.getMinutes() + 1) / 30) * 30))
 }
 
-export function EventSheet({ event, preset }: { event?: CalendarEvent; preset?: EventPreset }) {
+function repeatSummary(freq: Freq, interval: number, days: number[], until: string, date: string): string {
+  if (freq === 'none') return ''
+  const [one, many] = UNIT[freq]
+  let s = interval === 1 ? `Cada ${one}` : `Cada ${interval} ${many}`
+  if (freq === 'weekly') s += `, ${days.length === 7 ? 'todos los días' : days.map(d => DAYS[d]!.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' y $1')}`
+  if (freq === 'monthly') s += `, el día ${fromIso(date).getDate()}`
+  return until ? `${s}, hasta el ${longDate(until)}.` : `${s}, sin fecha de fin.`
+}
+
+export function EventSheet({ event, preset }: { event?: EventItem; preset?: EventPreset }) {
   const close = useStore(s => s.closeSheet)
   const lastCat = useStore(s => s.lastCat)
   const eventLead = useStore(s => s.data!.settings.eventLeadMinutes)
+  const desktop = window.api.platform === 'desktop'
+  const series = event?.seriesId ? rawEvent(event.seriesId) : undefined
+  const isOccurrence = !!series
   const initialDate = event?.date ?? preset?.date ?? todayIso()
   const initialStart = event ? event.start : (preset?.start ?? defaultStart(initialDate))
+  const rep = (series ?? event)?.repeat
 
   const [text, setText] = useState(event?.text ?? preset?.text ?? '')
   const [date, setDate] = useState(initialDate)
@@ -35,10 +52,17 @@ export function EventSheet({ event, preset }: { event?: CalendarEvent; preset?: 
   const [end, setEnd] = useState(event?.end || preset?.end || fromMin(Math.min(toMin(initialStart || '09:00') + 60, LAST)))
   const [cat, setCat] = useState<Category>(event?.cat ?? lastCat)
   const [remind, setRemind] = useState<number | undefined>(event?.remind)
+  const [scope, setScope] = useState<Scope>('one')
+  const [freq, setFreq] = useState<Freq>(rep?.freq ?? 'none')
+  const [interval, setInterval_] = useState(rep?.interval ?? 1)
+  const [days, setDays] = useState<number[]>(rep?.days ?? [weekday(fromIso(initialDate))])
+  const [until, setUntil] = useState(rep?.until ?? '')
   const [error, setError] = useState<string | null>(null)
   const [shake, setShake] = useState(0)
 
   const duration = useMemo(() => (start && end ? toMin(end) - toMin(start) : 0), [start, end])
+  /** Repetition is edited on the series; a single date of it can't start its own series. */
+  const showRepeat = !isOccurrence || scope === 'all'
 
   const changeStart = (v: string): void => {
     setStart(v)
@@ -46,32 +70,35 @@ export function EventSheet({ event, preset }: { event?: CalendarEvent; preset?: 
     setError(null)
   }
 
+  const fail = (msg: string): void => {
+    setError(msg)
+    setShake(s => s + 1)
+  }
+
   const submit = (e: FormEvent): void => {
     e.preventDefault()
-    if (!text.trim()) {
-      setError('Escribe qué vas a hacer.')
-      setShake(s => s + 1)
-      return
+    if (!text.trim()) return fail('Escribe qué vas a hacer.')
+    if (timed && (!start || !end || end <= start)) return fail('La hora de fin tiene que ser después de la de inicio.')
+    if (showRepeat && freq === 'weekly' && !days.length) return fail('Elige al menos un día de la semana.')
+    if (showRepeat && freq !== 'none' && until && until < (isOccurrence ? series!.date : date)) return fail('La fecha de fin de la repetición es anterior al primer día.')
+
+    const repeat: Repeat | undefined = showRepeat && freq !== 'none'
+      ? { freq, interval, ...(freq === 'weekly' ? { days: [...days].sort() } : {}), ...(until ? { until } : {}) }
+      : undefined
+    const base = series ?? event
+    const next: CalendarEvent = {
+      id: base?.id ?? newId(),
+      date,
+      start: timed ? start : '',
+      end: timed ? end : '',
+      text: text.trim(),
+      cat,
+      done: isOccurrence ? false : (event?.done ?? false),
+      createdAt: base?.createdAt ?? Date.now(),
+      ...(remind === undefined ? {} : { remind }),
+      ...(repeat ? { repeat, exceptions: base?.exceptions, doneDates: base?.doneDates } : {}),
     }
-    if (timed && (!start || !end || end <= start)) {
-      setError('La hora de fin tiene que ser después de la de inicio.')
-      setShake(s => s + 1)
-      return
-    }
-    saveEvent(
-      {
-        id: event?.id ?? newId(),
-        date,
-        start: timed ? start : '',
-        end: timed ? end : '',
-        text: text.trim(),
-        cat,
-        done: event?.done ?? false,
-        createdAt: event?.createdAt ?? Date.now(),
-        ...(remind === undefined ? {} : { remind }),
-      },
-      !event,
-    )
+    saveEvent(next, event, scope)
     close()
   }
 
@@ -82,8 +109,8 @@ export function EventSheet({ event, preset }: { event?: CalendarEvent; preset?: 
       footer={
         <>
           {event && (
-            <button type="button" className="btn ghost danger" onClick={() => { deleteEvent(event); close() }}>
-              Borrar
+            <button type="button" className="btn ghost danger" onClick={() => { deleteEvent(event, scope); close() }}>
+              {isOccurrence && scope === 'one' ? 'Quitar este día' : isOccurrence ? 'Borrar la serie' : 'Borrar'}
             </button>
           )}
           <span className="spacer" />
@@ -93,6 +120,19 @@ export function EventSheet({ event, preset }: { event?: CalendarEvent; preset?: 
       }
     >
       <motion.form id="event-form" className="form" onSubmit={submit} key={shake} animate={shake ? { x: [0, -8, 8, -5, 5, 0] } : undefined} transition={{ duration: 0.35 }}>
+        {isOccurrence && (
+          <div className="scope">
+            <span>Este evento se repite. ¿Qué quieres cambiar?</span>
+            <Segmented
+              label="Aplicar a"
+              layoutId="ev-scope"
+              size="s"
+              value={scope}
+              onChange={setScope}
+              options={[{ value: 'one', label: 'Solo este día' }, { value: 'all', label: 'Toda la serie' }]}
+            />
+          </div>
+        )}
         <input
           data-autofocus
           className="title-input"
@@ -104,8 +144,8 @@ export function EventSheet({ event, preset }: { event?: CalendarEvent; preset?: 
         />
         <div className="row">
           <label className="field">
-            <span>Día</span>
-            <input type="date" value={date} onChange={e => e.target.value && setDate(e.target.value)} />
+            <span>{isOccurrence && scope === 'all' ? 'Día (de esta vez)' : 'Día'}</span>
+            <input type="date" value={date} disabled={isOccurrence && scope === 'all'} onChange={e => e.target.value && setDate(e.target.value)} />
           </label>
           <div className="field">
             <span>Horario</span>
@@ -135,9 +175,9 @@ export function EventSheet({ event, preset }: { event?: CalendarEvent; preset?: 
                     </Chip>
                   ))}
                 </div>
-                {duration > 0 && <p className="hint">De {start} a {end} · {fmtDuration(duration)}. Gira la rueda del ratón o usa ↑ ↓ sobre una hora para ajustarla.</p>}
+                {duration > 0 && <p className="hint">De {start} a {end} · {fmtDuration(duration)}.{desktop && ' Gira la rueda del ratón o usa ↑ ↓ sobre una hora para ajustarla.'}</p>}
               </div>
-              <label className="field">
+              {desktop && <label className="field">
                 <span>Aviso</span>
                 <select value={remind ?? 'default'} onChange={e => setRemind(e.target.value === 'default' ? undefined : Number(e.target.value))}>
                   <option value="default">Predeterminado ({eventLead ? `${eventLead} min antes` : 'al empezar'})</option>
@@ -145,10 +185,58 @@ export function EventSheet({ event, preset }: { event?: CalendarEvent; preset?: 
                     <option key={m} value={m}>{m < 0 ? 'Sin aviso' : m === 0 ? 'Al empezar' : `${fmtDuration(m)} antes`}</option>
                   ))}
                 </select>
-              </label>
+              </label>}
             </motion.div>
           )}
         </AnimatePresence>
+
+        <AnimatePresence initial={false}>
+          {showRepeat && (
+            <motion.div className="repeat" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 32 }}>
+              <div className="field">
+                <span>Repetir</span>
+                <div className="chips">
+                  <Chip active={freq === 'none'} onClick={() => setFreq('none')}>No se repite</Chip>
+                  {REPEAT_FREQS.map(f => <Chip key={f} active={freq === f} onClick={() => setFreq(f)}>{REPEAT_LABEL[f]}</Chip>)}
+                </div>
+              </div>
+              <AnimatePresence initial={false}>
+                {freq !== 'none' && (
+                  <motion.div className="repeat-detail" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+                    <div className="row">
+                      <div className="field">
+                        <span>Cada</span>
+                        <div className="stepper">
+                          <motion.button type="button" className="mini" whileTap={{ scale: 0.85 }} onClick={() => setInterval_(n => Math.max(1, n - 1))} aria-label="Menos">−</motion.button>
+                          <span className="stepper-val">
+                            <AnimatePresence mode="popLayout" initial={false}>
+                              <motion.b key={interval} initial={{ y: 14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -14, opacity: 0 }}>{interval}</motion.b>
+                            </AnimatePresence>
+                          </span>
+                          <motion.button type="button" className="mini" whileTap={{ scale: 0.85 }} onClick={() => setInterval_(n => Math.min(30, n + 1))} aria-label="Más">+</motion.button>
+                          <span className="unit-label">{UNIT[freq][interval === 1 ? 0 : 1]}</span>
+                        </div>
+                      </div>
+                      <label className="field">
+                        <span>Hasta (opcional)</span>
+                        <input type="date" value={until} min={date} onChange={e => setUntil(e.target.value)} />
+                      </label>
+                    </div>
+                    {freq === 'weekly' && (
+                      <div className="chips">
+                        {DAYS_LETTER.map((d, i) => (
+                          <Chip key={i} className="chip-day" active={days.includes(i)} aria-label={DAYS[i]} onClick={() => setDays(ds => (ds.includes(i) ? ds.filter(x => x !== i) : [...ds, i]))}>{d}</Chip>
+                        ))}
+                      </div>
+                    )}
+                    <p className="hint">{repeatSummary(freq, interval, [...days].sort(), until, isOccurrence ? series!.date : date)}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="field">
           <span>Categoría</span>
           <div className="chips">

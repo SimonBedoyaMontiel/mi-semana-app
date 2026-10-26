@@ -2,9 +2,13 @@ import { create } from 'zustand'
 import type { Command } from '@shared/commands'
 import { applyCommand } from '@shared/reducer'
 import type { AppData, CalendarEvent, Category, Habit } from '@shared/model'
+import type { EventItem } from '@shared/events'
+import type { SyncStatus } from '@shared/sync'
+import type { UpdateStatus } from '@shared/ipc'
 import { addDays, addMonths, fromIso, toIso, todayIso } from '@shared/dates'
 
-export type View = 'month' | 'week' | 'day' | 'habits'
+/** `today` is the phone layout's home; on desktop the same content lives in the side panel. */
+export type View = 'today' | 'month' | 'week' | 'day' | 'habits'
 
 export interface EventPreset {
   date: string
@@ -14,7 +18,7 @@ export interface EventPreset {
 }
 
 export type Sheet =
-  | { kind: 'event'; event?: CalendarEvent; preset?: EventPreset }
+  | { kind: 'event'; event?: EventItem; preset?: EventPreset }
   | { kind: 'habit'; habit?: Habit }
   | { kind: 'settings' }
   | null
@@ -22,7 +26,9 @@ export type Sheet =
 export interface Toast {
   id: number
   text: string
-  undo?: () => void
+  action?: { label: string; run: () => void }
+  /** Stays until acted on or replaced. */
+  sticky?: boolean
 }
 
 interface State {
@@ -37,10 +43,13 @@ interface State {
   lastCat: Category
   /** Date whose month cell carries the shared-element id for the month ⇄ day morph. */
   morph: string | null
+  sync: SyncStatus | null
+  update: UpdateStatus
 
   init(): Promise<void>
   dispatch(cmd: Command): void
   replaceData(data: AppData): void
+  receiveExternal(data: AppData): void
   setView(v: View): void
   shift(n: -1 | 1): void
   goToday(): void
@@ -49,11 +58,16 @@ interface State {
   openSheet(s: Exclude<Sheet, null>): void
   closeSheet(): void
   notify(text: string, undo?: () => void): void
+  toastWith(t: Omit<Toast, 'id'>): void
   setLastCat(c: Category): void
 }
 
 let queue: Promise<unknown> = Promise.resolve()
+/** Commands applied locally but not yet confirmed by the store of record. */
+let inFlight: Command[] = []
 let toastSeq = 0
+
+const stamped = (cmd: Command): Command => (cmd.type === 'settings.set' || cmd.at !== undefined ? cmd : { ...cmd, at: Date.now() })
 
 export const useStore = create<State>()((set, get) => ({
   data: null,
@@ -66,6 +80,8 @@ export const useStore = create<State>()((set, get) => ({
   toast: null,
   lastCat: 'otro',
   morph: null,
+  sync: null,
+  update: { phase: 'idle' },
 
   async init() {
     try {
@@ -75,22 +91,35 @@ export const useStore = create<State>()((set, get) => ({
     }
   },
 
-  /** Optimistic: the UI updates now; writes reach the main process in order. */
-  dispatch(cmd) {
+  /** Optimistic: the UI updates now; writes reach the store of record in order. */
+  dispatch(raw) {
     const data = get().data
     if (!data) return
+    const cmd = stamped(raw)
     set({ data: applyCommand(data, cmd) })
+    inFlight.push(cmd)
     queue = queue
       .then(() => window.api.dispatch(cmd))
-      .catch(async (err: unknown) => {
-        console.error(err)
-        get().replaceData(await window.api.load())
-        get().notify('No se pudo guardar el último cambio. Se restauró lo guardado.')
-      })
+      .then(
+        () => {
+          inFlight = inFlight.filter(c => c !== cmd)
+        },
+        async (err: unknown) => {
+          console.error(err)
+          inFlight = inFlight.filter(c => c !== cmd)
+          get().replaceData(await window.api.load())
+          get().notify('No se pudo guardar el último cambio. Se restauró lo guardado.')
+        },
+      )
   },
 
   replaceData(data) {
     set({ data })
+  },
+
+  /** Data merged from another device: keep any local change that is still on its way. */
+  receiveExternal(data) {
+    set({ data: inFlight.reduce(applyCommand, data) })
   },
 
   setView(v) {
@@ -102,8 +131,8 @@ export const useStore = create<State>()((set, get) => ({
   shift(n) {
     const { view, date } = get()
     const d = fromIso(date)
-    const next = view === 'month' ? addMonths(d, n) : view === 'day' ? addDays(d, n) : addDays(d, 7 * n)
-    set({ date: toIso(next), dir: n })
+    const next = view === 'month' ? addMonths(d, n) : view === 'day' || view === 'today' ? addDays(d, n) : addDays(d, 7 * n)
+    set({ date: toIso(next), dir: n, ...(view === 'today' ? { view: 'day' as const, prevView: 'today' as const } : {}) })
   },
 
   goToday() {
@@ -133,10 +162,15 @@ export const useStore = create<State>()((set, get) => ({
   },
 
   notify(text, undo) {
-    set({ toast: { id: ++toastSeq, text, undo } })
+    set({ toast: { id: ++toastSeq, text, action: undo ? { label: 'Deshacer', run: undo } : undefined } })
+  },
+  toastWith(t) {
+    set({ toast: { id: ++toastSeq, ...t } })
   },
 
   setLastCat(c) {
     set({ lastCat: c })
   },
 }))
+
+export const rawEvent = (id: string): CalendarEvent | undefined => useStore.getState().data?.events.find(e => e.id === id)

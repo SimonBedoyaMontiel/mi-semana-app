@@ -247,7 +247,7 @@ button:disabled { cursor: default; }
   background-image:
     repeating-linear-gradient(to bottom, var(--line-2) 0 1px, transparent 1px var(--hh)),
     repeating-linear-gradient(to bottom, transparent 0 calc(var(--hh) / 2), color-mix(in oklab, var(--line-2) 55%, transparent) calc(var(--hh) / 2) calc(var(--hh) / 2 + 1px), transparent calc(var(--hh) / 2 + 1px) var(--hh));
-  touch-action: none;
+  touch-action: pan-x pan-y; /* mouse drags; touch scrolls and taps */
 }
 .tl-cols.is-dragging { cursor: grabbing; }
 .tl-col { position: relative; min-width: 0; }
@@ -579,6 +579,83 @@ button:disabled { cursor: default; }
 .toast button { color: var(--amber); font-weight: 700; }
 .toast button:hover { text-decoration: underline; }
 .toast-timer { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); transform-origin: left; }
+
+/* ───────────────────────── Recurrence ───────────────────────── */
+.scope { display: grid; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); color: var(--ink); font-weight: 600; font-size: 13px; }
+.scope .seg { justify-self: start; background: var(--raised); }
+.repeat, .repeat-detail { display: grid; gap: 14px; overflow: hidden; }
+.unit-label { font-weight: 600; color: var(--muted); margin-left: 4px; }
+.ev-repeat { opacity: 0.8; }
+
+/* ───────────────────────── Sync + updates ───────────────────────── */
+.sync-badge .ico { transition: color 0.3s; }
+.sync-badge.is-idle { color: var(--green); }
+.sync-badge.is-syncing { color: var(--accent); }
+.sync-badge.is-error { color: var(--signal); }
+.sync-badge.is-signed-out { color: var(--faint); }
+.account { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--surface); }
+.account > div { display: grid; min-width: 0; }
+.account b { overflow: hidden; text-overflow: ellipsis; }
+.account span { font-size: 12.5px; color: var(--muted); }
+.account-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); flex: none; }
+.account-dot.is-syncing { background: var(--accent); animation: pulse 1.4s var(--ease-out) infinite; }
+.account-dot.is-error { background: var(--signal); }
+.notice { margin: 0; padding: 10px 14px; border-radius: 12px; background: color-mix(in oklab, var(--green) 14%, transparent); font-size: 13px; }
+.auth { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+.progress { height: 4px; border-radius: 9px; background: var(--line-2); overflow: hidden; }
+.progress span { display: block; height: 100%; background: var(--accent); transform-origin: left; }
+.toast-close { color: var(--bg) !important; opacity: 0.6; font-size: 18px; line-height: 1; }
+.toast-close:hover { opacity: 1; text-decoration: none !important; }
+
+/* ───────────────────────── Web + phone ───────────────────────── */
+html[data-platform='web'] { --controls: 0px; }
+html[data-platform='web'] body { user-select: auto; }
+.view > .today { padding: 0 0 40px; max-width: 560px; }
+.view > .today .today-date { display: none; }
+/* Touch screens keep :hover after a tap; the fill-up effect is for pointers only. */
+@media (hover: none) {
+  .btn:hover:not(:disabled)::before { transform: translateY(101%); }
+  .btn:hover:not(:disabled) { color: inherit; border-color: var(--line); }
+  .btn.primary:hover:not(:disabled) { color: var(--on-accent); border-color: var(--accent); }
+  .btn.ghost:hover:not(:disabled) { border-color: transparent; }
+  .btn:active:not(:disabled)::before { transform: translateY(0); }
+  .btn:active:not(:disabled) { color: var(--bg); }
+  .cell:hover .cell-bg { box-shadow: none; transform: none; }
+  .cell:hover .cell-num { font-stretch: 70%; }
+}
+
+@media (max-width: 720px) {
+  .app { grid-template-rows: auto minmax(0, 1fr); }
+  .titlebar {
+    grid-template-columns: minmax(0, 1fr) auto; gap: 8px;
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
+  }
+  .brand { display: none; }
+  .titlebar-center { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .titlebar-center .seg-btn { padding: 0 12px; }
+  .head { padding: 14px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); gap: 10px; align-items: center; }
+  .kt { font-size: clamp(40px, 13vw, 64px); }
+  .head-actions { width: 100%; justify-content: space-between; }
+  .scroller { padding: 4px max(12px, env(safe-area-inset-right, 0px)) calc(110px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+  .btn.fab {
+    position: fixed; z-index: 60; width: 60px; height: 60px; padding: 0; border-radius: 22px;
+    right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    box-shadow: var(--shadow-3);
+  }
+  .btn.fab .ico { width: 24px; height: 24px; }
+  .week { min-width: 640px; }
+  .month-grid { min-height: 0; }
+  .cell { min-height: 62px; }
+  .day-content { padding: 12px; gap: 16px; }
+  .sheet-layer { padding: 0; place-items: end stretch; }
+  .sheet { width: 100%; max-height: 92vh; border-radius: 24px 24px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .sheet-wide { width: 100%; }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .auth { grid-template-columns: minmax(0, 1fr); }
+  .slot-times { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .toast-host { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .clock-digits { font-size: 64px; }
+}
 
 /* ───────────────────────── Keyframes ───────────────────────── */
 @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(0.98); } }

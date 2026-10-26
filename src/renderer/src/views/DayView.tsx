@@ -34,7 +34,7 @@ function QuickAdd({ date }: { date: string }) {
       id: newId(), date, start: parsed.start, end: parsed.end, text: parsed.text,
       cat: parsed.cat ?? lastCat, done: false, createdAt: Date.now(),
     }
-    saveEvent(ev, true)
+    saveEvent(ev, undefined)
     setValue('')
   }
 

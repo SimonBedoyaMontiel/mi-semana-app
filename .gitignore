@@ -5,3 +5,7 @@ dist/
 .DS_Store
 .vite/
 *.tsbuildinfo
+dist-web/
+.env
+.env.local
+.claude/

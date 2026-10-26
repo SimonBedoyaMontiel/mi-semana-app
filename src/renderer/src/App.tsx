@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from 'motion/react'
 import { useStore } from '@/state/store'
+import { useNarrow } from '@/state/hooks'
+import type { UpdateStatus } from '@shared/ipc'
 import type { View } from '@/state/store'
 import { TitleBar, Header } from '@/components/Chrome'
 import { TodayPanel } from '@/components/TodayPanel'
@@ -48,11 +50,39 @@ function useMainProcessEvents(): void {
     const offShortcut = window.api.onShortcut(action => {
       if (action === 'new-event') useStore.getState().openSheet({ kind: 'event', preset: { date: useStore.getState().date } })
     })
+    const offData = window.api.onExternalData(data => useStore.getState().receiveExternal(data))
+    const offSync = window.api.sync.onStatus(sync => useStore.setState({ sync }))
+    void window.api.sync.status().then(sync => useStore.setState({ sync }))
+    const onUpdate = (update: UpdateStatus): void => {
+      const prev = useStore.getState().update
+      useStore.setState({ update })
+      if (update.phase === 'ready' && prev.phase !== 'ready') {
+        useStore.getState().toastWith({
+          text: `Mi Semana ${update.version ?? ''} está lista.`,
+          action: { label: 'Reiniciar ahora', run: () => void window.api.updates.install() },
+          sticky: true,
+        })
+      }
+    }
+    const offUpdate = window.api.updates.onStatus(onUpdate)
+    void window.api.updates.status().then(onUpdate)
     return () => {
       offDate()
       offShortcut()
+      offData()
+      offSync()
+      offUpdate()
     }
   }, [])
+}
+
+/** The phone layout has no side panel: "Hoy" becomes its own view, the default one. */
+function usePhoneLayout(narrow: boolean): void {
+  useEffect(() => {
+    const s = useStore.getState()
+    if (narrow && s.view === 'month' && !s.sheet) useStore.setState({ view: 'today', prevView: 'today' })
+    if (!narrow && s.view === 'today') useStore.setState({ view: 'month', prevView: 'month' })
+  }, [narrow])
 }
 
 function CurrentView() {
@@ -67,6 +97,7 @@ function CurrentView() {
         exit={{ opacity: 0, transition: { duration: 0.15 } }}
       >
         <Suspense fallback={null}>
+          {view === 'today' && <TodayPanel />}
           {view === 'month' && <MonthView />}
           {view === 'week' && <WeekView />}
           {view === 'day' && <DayView />}
@@ -93,9 +124,11 @@ function SheetHost() {
 export function App() {
   const ready = useStore(s => s.data !== null)
   const error = useStore(s => s.error)
-  const sidebar = useStore(s => s.data?.settings.sidebar ?? true)
+  const narrow = useNarrow()
+  const sidebar = useStore(s => s.data?.settings.sidebar ?? true) && !narrow
   useShortcuts()
   useMainProcessEvents()
+  usePhoneLayout(narrow)
 
   useEffect(() => {
     void useStore.getState().init()

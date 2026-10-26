@@ -1,7 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import { IPC } from '@shared/ipc'
-import type { MiSemanaApi, ShortcutAction } from '@shared/ipc'
+import type { MiSemanaApi, ShortcutAction, UpdateStatus } from '@shared/ipc'
+import type { AppData } from '@shared/model'
+import type { SyncStatus } from '@shared/sync'
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T): void => cb(payload)
@@ -10,8 +12,10 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 }
 
 const api: MiSemanaApi = {
+  platform: 'desktop',
   load: () => ipcRenderer.invoke(IPC.load),
   dispatch: cmd => ipcRenderer.invoke(IPC.dispatch, cmd),
+  onExternalData: cb => subscribe<AppData>(IPC.external, cb),
   exportFile: () => ipcRenderer.invoke(IPC.exportFile),
   importFile: () => ipcRenderer.invoke(IPC.importFile),
   openDataFolder: () => ipcRenderer.invoke(IPC.openDataFolder),
@@ -19,6 +23,19 @@ const api: MiSemanaApi = {
   testNotification: () => ipcRenderer.invoke(IPC.testNotification),
   onOpenDate: cb => subscribe<string>(IPC.openDate, cb),
   onShortcut: cb => subscribe<ShortcutAction>(IPC.shortcut, cb),
+  sync: {
+    status: () => ipcRenderer.invoke(IPC.syncStatus),
+    signIn: (email, password) => ipcRenderer.invoke(IPC.syncSignIn, email, password),
+    signUp: (email, password) => ipcRenderer.invoke(IPC.syncSignUp, email, password),
+    signOut: () => ipcRenderer.invoke(IPC.syncSignOut),
+    now: () => ipcRenderer.invoke(IPC.syncNow),
+    onStatus: cb => subscribe<SyncStatus>(IPC.syncStatus, cb),
+  },
+  updates: {
+    status: () => ipcRenderer.invoke(IPC.updateStatus),
+    install: () => ipcRenderer.invoke(IPC.updateInstall),
+    onStatus: cb => subscribe<UpdateStatus>(IPC.updateStatus, cb),
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

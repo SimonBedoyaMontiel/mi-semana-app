@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
 
 export default tseslint.config(
-  { ignores: ['out/**', 'dist/**', 'node_modules/**', 'build/**'] },
+  { ignores: ['out/**', 'dist/**', 'dist-web/**', 'node_modules/**', 'build/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -19,6 +19,10 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
+  },
+  {
+    files: ['src/web/public/sw.js'],
+    languageOptions: { globals: { self: 'readonly', caches: 'readonly', fetch: 'readonly', URL: 'readonly' } },
   },
   {
     files: ['scripts/**/*.mjs'],

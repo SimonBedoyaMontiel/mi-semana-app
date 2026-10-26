@@ -1,7 +1,7 @@
 {
   "name": "mi-semana",
   "productName": "Mi Semana",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Agenda de escritorio: calendario, horarios y seguimiento de hábitos y suplementos.",
   "author": "Mi Semana",
   "license": "UNLICENSED",
@@ -18,14 +18,18 @@
     "test:watch": "vitest",
     "icon": "node scripts/make-icon.mjs",
     "check": "npm run typecheck && npm run lint && npm run test",
-    "dist": "npm run check && electron-vite build && electron-builder --win --x64",
-    "dist:dir": "electron-vite build && electron-builder --win --x64 --dir"
+    "dist": "npm run check && electron-vite build && electron-builder --win --x64 --publish never",
+    "dist:dir": "electron-vite build && electron-builder --win --x64 --dir --publish never",
+    "dev:web": "vite --config vite.web.config.ts",
+    "build:web": "vite build --config vite.web.config.ts",
+    "preview:web": "vite preview --config vite.web.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@fontsource-variable/anybody": "5.3.0",
     "@fontsource-variable/instrument-sans": "5.3.0",
     "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "@supabase/supabase-js": "2.118.0",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
@@ -44,5 +48,12 @@
     "vitest": "4.1.12",
     "zod": "4.6.7",
     "zustand": "5.0.16"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SimonBedoyaMontiel/mi-semana-app.git"
   }
 }

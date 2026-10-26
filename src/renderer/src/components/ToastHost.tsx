@@ -8,7 +8,7 @@ export function ToastHost() {
   const toast = useStore(s => s.toast)
 
   useEffect(() => {
-    if (!toast) return
+    if (!toast || toast.sticky) return
     const t = window.setTimeout(() => {
       if (useStore.getState().toast?.id === toast.id) useStore.setState({ toast: null })
     }, VISIBLE_MS)
@@ -28,23 +28,27 @@ export function ToastHost() {
             exit={{ opacity: 0, y: 10, scale: 0.96, transition: { duration: 0.16 } }}
           >
             <span>{toast.text}</span>
-            {toast.undo && (
+            {toast.action && (
               <button
                 type="button"
                 onClick={() => {
-                  toast.undo!()
+                  toast.action!.run()
                   useStore.setState({ toast: null })
                 }}
               >
-                Deshacer
+                {toast.action.label}
               </button>
             )}
-            <motion.i
-              className="toast-timer"
-              initial={{ scaleX: 1 }}
-              animate={{ scaleX: 0 }}
-              transition={{ duration: VISIBLE_MS / 1000, ease: 'linear' }}
-            />
+            {toast.sticky ? (
+              <button type="button" className="toast-close" aria-label="Cerrar" onClick={() => useStore.setState({ toast: null })}>×</button>
+            ) : (
+              <motion.i
+                className="toast-timer"
+                initial={{ scaleX: 1 }}
+                animate={{ scaleX: 0 }}
+                transition={{ duration: VISIBLE_MS / 1000, ease: 'linear' }}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>

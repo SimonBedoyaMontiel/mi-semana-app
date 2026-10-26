@@ -25,6 +25,12 @@ nsis:
   shortcutName: Mi Semana
   artifactName: MiSemana-Setup-${version}.${ext}
   deleteAppDataOnUninstall: false
+# Auto-updates read the GitHub Releases of this repo (latest.yml + installer).
+publish:
+  provider: github
+  owner: SimonBedoyaMontiel
+  repo: mi-semana-app
+  releaseType: release
 electronLanguages:
   - es
   - es-419

@@ -58,3 +58,8 @@ export const REPEAT_LABEL: Record<(typeof REPEAT_FREQS)[number], string> = {
   weekly: 'Cada semana',
   monthly: 'Cada mes',
 }
+
+/** Public web app. E-mail confirmations and password resets land here, also for desktop users. */
+export const WEB_APP_URL = 'https://simonbedoyamontiel.github.io/mi-semana-app/'
+/** Desktop OAuth callback, registered as a Windows protocol by the installer. */
+export const DESKTOP_AUTH_CALLBACK = 'misemana://auth-callback'

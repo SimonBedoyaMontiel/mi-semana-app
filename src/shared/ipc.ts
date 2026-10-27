@@ -17,6 +17,9 @@ export const IPC = {
   syncSignIn: 'sync:sign-in',
   syncSignUp: 'sync:sign-up',
   syncSignOut: 'sync:sign-out',
+  syncGoogle: 'sync:google',
+  syncReset: 'sync:reset-password',
+  syncUpdatePassword: 'sync:update-password',
   syncNow: 'sync:now',
   updateStatus: 'update:status',
   updateInstall: 'update:install',
@@ -60,7 +63,12 @@ export interface MiSemanaApi {
     signIn(email: string, password: string): Promise<void>
     /** Resolves true when the account must confirm its e-mail before signing in. */
     signUp(email: string, password: string): Promise<boolean>
-    signOut(): Promise<void>
+    /** Desktop: opens the system browser. Web: redirects this page to Google. */
+    signInWithGoogle(): Promise<void>
+    resetPassword(email: string): Promise<void>
+    updatePassword(password: string): Promise<void>
+    /** `clearLocal` also removes this device's copy of the data (shared computers). */
+    signOut(opts?: { clearLocal?: boolean }): Promise<void>
     now(): Promise<void>
     onStatus(cb: (s: SyncStatus) => void): () => void
   }

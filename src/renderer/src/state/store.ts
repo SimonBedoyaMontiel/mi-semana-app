@@ -21,6 +21,7 @@ export type Sheet =
   | { kind: 'event'; event?: EventItem; preset?: EventPreset }
   | { kind: 'habit'; habit?: Habit }
   | { kind: 'settings' }
+  | { kind: 'account' }
   | null
 
 export interface Toast {

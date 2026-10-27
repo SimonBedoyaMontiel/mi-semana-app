@@ -4,8 +4,10 @@ import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 
 export const cx = (...c: Array<string | false | null | undefined>): string => c.filter(Boolean).join(' ')
 
-export const SPRING = { type: 'spring', stiffness: 420, damping: 34, mass: 0.8 } as const
-export const SOFT = { type: 'spring', stiffness: 160, damping: 24 } as const
+/** Critically damped: fast, no overshoot. Motion should feel precise, not bouncy. */
+export const SPRING = { type: 'spring', stiffness: 520, damping: 46, mass: 0.9 } as const
+export const SOFT = { type: 'spring', stiffness: 170, damping: 28 } as const
+export const EASE = [0.22, 1, 0.36, 1] as const
 
 export function Ring({
   value, size = 40, stroke = 4, color = 'var(--accent)', children, className,

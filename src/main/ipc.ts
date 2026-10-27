@@ -96,7 +96,10 @@ export function registerIpc({ repo, reminders, sync, updater, getWindow, quit }:
   ipcMain.handle(IPC.syncStatus, guard(() => sync.current))
   ipcMain.handle(IPC.syncSignIn, guard((_e, email: unknown, password: unknown) => sync.signIn(str(email, 200), str(password, 200))))
   ipcMain.handle(IPC.syncSignUp, guard((_e, email: unknown, password: unknown) => sync.signUp(str(email, 200), str(password, 200))))
-  ipcMain.handle(IPC.syncSignOut, guard(() => sync.signOut()))
+  ipcMain.handle(IPC.syncSignOut, guard((_e, opts: unknown) => sync.signOut(!!(opts && typeof opts === 'object' && (opts as { clearLocal?: unknown }).clearLocal === true))))
+  ipcMain.handle(IPC.syncGoogle, guard(() => sync.signInWithGoogle()))
+  ipcMain.handle(IPC.syncReset, guard((_e, email: unknown) => sync.resetPassword(str(email, 200))))
+  ipcMain.handle(IPC.syncUpdatePassword, guard((_e, password: unknown) => sync.updatePassword(str(password, 200))))
   ipcMain.handle(IPC.syncNow, guard(() => sync.run()))
 
   ipcMain.handle(IPC.updateStatus, guard(() => updater.current))

@@ -1,88 +1,114 @@
 /*
  * Mi Semana — design tokens
- * Concrete greys with one electric cobalt and a vermilion signal. Display type is a variable-width
- * grotesque that moves; body text stays quiet. Theme follows Windows via nativeTheme.themeSource.
+ *
+ * Concrete greys and one cobalt. Colour carries meaning only: the accent marks "today" and the
+ * primary action, the signal colour marks "now", category inks are harmonised (same lightness and
+ * chroma, different hue) so no category shouts louder than another.
+ * Dark mode is neutral graphite — no blue cast — with the inks lifted for contrast.
  */
 :root {
   color-scheme: light;
 
-  --bg: #e4e5e8;
-  --bg-2: #dcdde1;
-  --surface: #eeeff2;
+  --bg: #e8e9ec;
+  --bg-2: #e1e2e6;
+  --surface: #f0f1f3;
   --raised: #fbfbfc;
-  --ink: #0e0f13;
-  --ink-2: #3a3d46;
-  --muted: #6b6f7b;
-  --faint: #9a9eaa;
-  --line: #cdd0d6;
-  --line-2: #dfe1e5;
+  --hover: #f3f4f6;
+  --pill: #ffffff;
+  --ink: #15171b;
+  --ink-2: #3c4049;
+  --muted: #6c717c;
+  --faint: #9da2ad;
+  --line: #d5d8dd;
+  --line-2: #e5e7ea;
 
-  --accent: #2337ff;
-  --accent-soft: #dfe2ff;
+  --accent: #2442e6;
+  --accent-hover: #1c35c2;
+  --accent-soft: #e4e8fc;
+  --accent-text: #1d36c4;
   --on-accent: #ffffff;
-  --signal: #ff4a1c;
+  --signal: #e0482a;
+  --danger: #c93a28;
 
-  --cobalt: #2337ff;
-  --vermilion: #ff4a1c;
-  --amber: #e09a00;
-  --green: #109a4c;
-  --teal: #00968f;
-  --violet: #7a3cff;
-  --magenta: #d81b7f;
+  --cobalt: #3a5ad8;
+  --vermilion: #d2593c;
+  --amber: #b5841c;
+  --green: #2f8a59;
+  --teal: #23878a;
+  --violet: #7259cf;
+  --magenta: #bd4c86;
 
   --cat-trabajo: var(--cobalt);
   --cat-estudio: var(--violet);
   --cat-salud: var(--green);
   --cat-personal: var(--vermilion);
-  --cat-otro: #8a8e99;
+  --cat-otro: #858a95;
 
   --f-display: 'Anybody Variable', 'Arial Narrow', 'Segoe UI', sans-serif;
   --f-body: 'Instrument Sans Variable', 'Segoe UI', system-ui, sans-serif;
-  --f-mono: 'JetBrains Mono Variable', 'Cascadia Mono', Consolas, monospace;
 
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-xs: 11.5px;
+  --t-s: 12.5px;
+  --t-m: 13.5px;
+  --t-l: 15px;
+  --t-xl: 18px;
 
-  --shadow-1: 0 1px 0 rgb(14 15 19 / 0.03), 0 1px 3px rgb(14 15 19 / 0.06);
-  --shadow-2: 0 14px 34px -14px rgb(14 15 19 / 0.32), 0 3px 8px rgb(14 15 19 / 0.06);
-  --shadow-3: 0 40px 90px -30px rgb(14 15 19 / 0.5), 0 8px 24px rgb(14 15 19 / 0.1);
+  --r-s: 6px;
+  --r-m: 9px;
+  --r-l: 14px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 0.75, 0);
+  --fast: 140ms;
+  --base: 220ms;
+
+  --shadow-1: 0 1px 2px rgb(20 22 27 / 0.06);
+  --shadow-2: 0 1px 2px rgb(20 22 27 / 0.05), 0 6px 18px -6px rgb(20 22 27 / 0.16);
+  --shadow-3: 0 2px 6px rgb(20 22 27 / 0.06), 0 24px 60px -18px rgb(20 22 27 / 0.32);
+  --scrim: rgb(14 15 18 / 0.32);
 
   --titlebar: 48px;
   --controls: 144px; /* native window buttons drawn by Windows */
-  --sidebar: 340px;
+  --sidebar: 332px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #0c0d10;
-    --bg-2: #0f1014;
-    --surface: #181a20;
-    --raised: #14161b;
-    --ink: #edeef2;
-    --ink-2: #c3c6cf;
-    --muted: #8d92a0;
-    --faint: #5d6270;
-    --line: #2a2e38;
-    --line-2: #1f222a;
 
-    --accent: #6170ff;
-    --accent-soft: #1d2152;
+    --bg: #131313;
+    --bg-2: #171717;
+    --surface: #222222;
+    --raised: #1b1b1b;
+    --hover: #242424;
+    --pill: #333333;
+    --ink: #ececec;
+    --ink-2: #c6c6c6;
+    --muted: #919191;
+    --faint: #626262;
+    --line: #2f2f2f;
+    --line-2: #262626;
+
+    --accent: #5a7bff;
+    --accent-hover: #7590ff;
+    --accent-soft: #222a45;
+    --accent-text: #9db0ff;
     --on-accent: #ffffff;
-    --signal: #ff6a3d;
+    --signal: #f2684a;
+    --danger: #f07a68;
 
-    --cobalt: #6170ff;
-    --vermilion: #ff6a3d;
-    --amber: #f5b630;
-    --green: #2fc875;
-    --teal: #22c4bb;
-    --violet: #9b6bff;
-    --magenta: #ff4fa8;
-    --cat-otro: #7d8290;
+    --cobalt: #7290f5;
+    --vermilion: #e9805f;
+    --amber: #d6a440;
+    --green: #5bb583;
+    --teal: #4fb4b2;
+    --violet: #a08ef0;
+    --magenta: #e284b5;
+    --cat-otro: #8d8d8d;
 
-    --shadow-1: 0 1px 0 rgb(0 0 0 / 0.3);
-    --shadow-2: 0 18px 40px -16px rgb(0 0 0 / 0.75), 0 2px 6px rgb(0 0 0 / 0.4);
-    --shadow-3: 0 40px 100px -30px rgb(0 0 0 / 0.9), 0 8px 24px rgb(0 0 0 / 0.5);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px -8px rgb(0 0 0 / 0.6);
+    --shadow-3: 0 2px 6px rgb(0 0 0 / 0.4), 0 28px 70px -20px rgb(0 0 0 / 0.8);
+    --scrim: rgb(0 0 0 / 0.5);
   }
 }

@@ -12,9 +12,9 @@ import { cx } from '@/components/primitives'
 const MAX_CHIPS = 3
 
 export const slide: Variants = {
-  enter: (dir: number) => ({ x: dir * 80, opacity: 0, filter: 'blur(6px)' }),
-  center: { x: 0, opacity: 1, filter: 'blur(0px)', transition: { type: 'spring', stiffness: 260, damping: 32 } },
-  exit: (dir: number) => ({ x: dir * -80, opacity: 0, filter: 'blur(6px)', transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }),
+  enter: (dir: number) => ({ x: dir * 36, opacity: 0 }),
+  center: { x: 0, opacity: 1, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } },
+  exit: (dir: number) => ({ x: dir * -24, opacity: 0, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }),
 }
 
 /** Open a day with a shared-element morph: the cell gets a layoutId for one frame, then the view switches. */

@@ -162,3 +162,13 @@ describe('sync engine', () => {
     expect(res.data.notes).toEqual({ '2026-10-26': 'ok' })
   })
 })
+
+describe('account switching', () => {
+  it('adopts never-synced data and clears data owned by another account', async () => {
+    const { adoptAccount } = await import('@shared/sync')
+    expect(adoptAccount(emptySyncState(), 'a')).toEqual({ state: { userId: 'a', cursor: null, pushed: {} }, clearLocal: false })
+    const owned = { userId: 'a', cursor: 'x', pushed: { 'e:1': 5 } }
+    expect(adoptAccount(owned, 'a')).toEqual({ state: owned, clearLocal: false })
+    expect(adoptAccount(owned, 'b')).toEqual({ state: { userId: 'b', cursor: null, pushed: {} }, clearLocal: true })
+  })
+})

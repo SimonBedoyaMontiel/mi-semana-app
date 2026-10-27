@@ -47,7 +47,7 @@ const EventBlock = memo(function EventBlock({ p, h0, hh, compact }: { p: PlacedE
       transition={SPRING}
     >
       <div className="ev-title">{e.text}</div>
-      <div className="ev-time">{e.start}–{e.end}{e.repeat && <span className="ev-repeat" title="Se repite"> ↻</span>}</div>
+      <div className="ev-time">{e.start}–{e.end}{e.repeat && <svg className="ev-repeat" viewBox="0 0 16 16" aria-label="Se repite"><path d="M3 6.5a5 5 0 0 1 8.6-2.3L13 5.6M13 2.5v3.1H9.9M13 9.5a5 5 0 0 1-8.6 2.3L3 10.4M3 13.5v-3.1h3.1" /></svg>}</div>
       {!compact && (
         <button
           type="button"

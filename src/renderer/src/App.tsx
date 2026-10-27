@@ -3,6 +3,7 @@ import { AnimatePresence, LayoutGroup, MotionConfig, motion } from 'motion/react
 import { useStore } from '@/state/store'
 import { useNarrow } from '@/state/hooks'
 import type { UpdateStatus } from '@shared/ipc'
+import type { SyncStatus } from '@shared/sync'
 import type { View } from '@/state/store'
 import { TitleBar, Header } from '@/components/Chrome'
 import { TodayPanel } from '@/components/TodayPanel'
@@ -16,6 +17,7 @@ const HabitsView = lazy(() => import('@/views/HabitsView').then(m => ({ default:
 const EventSheet = lazy(() => import('@/sheets/EventSheet').then(m => ({ default: m.EventSheet })))
 const HabitSheet = lazy(() => import('@/sheets/HabitSheet').then(m => ({ default: m.HabitSheet })))
 const SettingsSheet = lazy(() => import('@/sheets/SettingsSheet').then(m => ({ default: m.SettingsSheet })))
+const AccountSheet = lazy(() => import('@/sheets/AccountSheet').then(m => ({ default: m.AccountSheet })))
 
 const VIEW_KEYS: Record<string, View> = { '1': 'month', '2': 'week', '3': 'day', '4': 'habits' }
 
@@ -51,8 +53,13 @@ function useMainProcessEvents(): void {
       if (action === 'new-event') useStore.getState().openSheet({ kind: 'event', preset: { date: useStore.getState().date } })
     })
     const offData = window.api.onExternalData(data => useStore.getState().receiveExternal(data))
-    const offSync = window.api.sync.onStatus(sync => useStore.setState({ sync }))
-    void window.api.sync.status().then(sync => useStore.setState({ sync }))
+    const onSync = (sync: SyncStatus): void => {
+      useStore.setState({ sync })
+      // Arrived from a password-reset e-mail: go straight to choosing a new password.
+      if (sync.recovery && useStore.getState().sheet?.kind !== 'account') useStore.getState().openSheet({ kind: 'account' })
+    }
+    const offSync = window.api.sync.onStatus(onSync)
+    void window.api.sync.status().then(onSync)
     const onUpdate = (update: UpdateStatus): void => {
       const prev = useStore.getState().update
       useStore.setState({ update })
@@ -92,9 +99,9 @@ function CurrentView() {
       <motion.div
         key={view}
         className="view"
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 32 } }}
-        exit={{ opacity: 0, transition: { duration: 0.15 } }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
+        exit={{ opacity: 0, transition: { duration: 0.12 } }}
       >
         <Suspense fallback={null}>
           {view === 'today' && <TodayPanel />}
@@ -116,6 +123,7 @@ function SheetHost() {
         {sheet?.kind === 'event' && <EventSheet key="event" event={sheet.event} preset={sheet.preset} />}
         {sheet?.kind === 'habit' && <HabitSheet key="habit" habit={sheet.habit} />}
         {sheet?.kind === 'settings' && <SettingsSheet key="settings" />}
+        {sheet?.kind === 'account' && <AccountSheet key="account" />}
       </AnimatePresence>
     </Suspense>
   )

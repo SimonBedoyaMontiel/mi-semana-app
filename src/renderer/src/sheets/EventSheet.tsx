@@ -175,7 +175,7 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
                     </Chip>
                   ))}
                 </div>
-                {duration > 0 && <p className="hint">De {start} a {end} · {fmtDuration(duration)}.{desktop && ' Gira la rueda del ratón o usa ↑ ↓ sobre una hora para ajustarla.'}</p>}
+                {duration > 0 && <p className="hint">De {start} a {end} · {fmtDuration(duration)}.{desktop && ' También puedes ajustarla con la rueda del ratón o las flechas del teclado.'}</p>}
               </div>
               {desktop && <label className="field">
                 <span>Aviso</span>

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import {
-  DAYS, MONTHS, addDays, fromIso, isoWeek, mondayOf, sameMonth, toIso, weekRangeLabel, weekday,
+  DAYS, MONTHS, addDays, capitalize, fromIso, isoWeek, mondayOf, sameMonth, toIso, weekRangeLabel, weekday,
 } from '@shared/dates'
 import type { View } from '@/state/store'
 import { useStore } from '@/state/store'
@@ -26,25 +26,34 @@ const ago = (t: number): string => {
   return m < 1 ? 'hace un momento' : m < 60 ? `hace ${m} min` : `hace ${Math.round(m / 60)} h`
 }
 
-/** Cloud status: spins while syncing, turns red on error, opens Ajustes on click. */
-function SyncBadge() {
+/**
+ * Account entry point. Signed out: a quiet "Entrar". Signed in: the account's initial, ringed by the
+ * sync state (a turning arc while syncing, a red mark on error).
+ */
+function AccountButton() {
   const sync = useStore(s => s.sync)
   const openSheet = useStore(s => s.openSheet)
   if (!sync?.configured) return null
+  if (!sync.email) {
+    return (
+      <button type="button" className="btn ghost small" onClick={() => openSheet({ kind: 'account' })}>
+        Entrar
+      </button>
+    )
+  }
   const label =
-    sync.phase === 'signed-out' ? 'Sincronización: sin iniciar sesión'
-      : sync.phase === 'syncing' ? 'Sincronizando…'
-        : sync.phase === 'error' ? `Error al sincronizar: ${sync.error ?? ''}`
-          : sync.lastSync ? `Sincronizado ${ago(sync.lastSync)}` : 'Sincronizado'
+    sync.phase === 'syncing' ? 'Sincronizando…'
+      : sync.phase === 'error' ? `Error al sincronizar: ${sync.error ?? ''}`
+        : sync.lastSync ? `${sync.email} · sincronizado ${ago(sync.lastSync)}` : sync.email
   return (
-    <button type="button" className={cx('icon-btn', 'sync-badge', `is-${sync.phase}`)} title={label} aria-label={label} onClick={() => openSheet({ kind: 'settings' })}>
-      <svg viewBox="0 0 24 24" className="ico" aria-hidden="true">
-        <path d="M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.1 4.5 4.5 0 0 0 7 18z" />
-        {sync.phase === 'syncing' && <motion.path d="M12 10.5v4M10 12.5l2 2 2-2" initial={{ y: -3, opacity: 0 }} animate={{ y: [-3, 1, -3], opacity: 1 }} transition={{ repeat: Infinity, duration: 1.1 }} />}
-        {sync.phase === 'idle' && <motion.path d="M9.5 13.2l1.8 1.8 3.4-3.6" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4 }} />}
-        {sync.phase === 'error' && <path d="M12 10.5v3M12 15.8v.2" />}
-        {sync.phase === 'signed-out' && <path d="M9.5 15.5l5-5" />}
+    <button type="button" className={cx('account-btn', `is-${sync.phase}`)} title={label} aria-label={`Cuenta: ${label}`} onClick={() => openSheet({ kind: 'account' })}>
+      <svg viewBox="0 0 34 34" className="account-ring" aria-hidden="true">
+        <circle cx="17" cy="17" r="15.5" />
+        {sync.phase === 'syncing' && (
+          <motion.circle cx="17" cy="17" r="15.5" className="account-arc" initial={{ rotate: 0 }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }} style={{ originX: '50%', originY: '50%' }} />
+        )}
       </svg>
+      <span className="avatar">{(sync.email ?? '?').charAt(0).toUpperCase()}</span>
     </button>
   )
 }
@@ -71,7 +80,7 @@ export function TitleBar() {
         <Segmented label="Vista" layoutId="view-pill" value={view === 'day' && narrow ? 'today' : view} onChange={setView} options={views} />
       </div>
       <div className="titlebar-actions">
-        <SyncBadge />
+        <AccountButton />
         {!narrow && (
           <button
             type="button"
@@ -99,13 +108,13 @@ function titleFor(view: View, date: string, today: string, eventsInMonth: number
     case 'today':
       return { title: 'Hoy', eyebrow: `${DAYS[weekday(t)]} ${t.getDate()} de ${MONTHS[t.getMonth()]}`, inPeriod: true }
     case 'month':
-      return { title: MONTHS[d.getMonth()]!, eyebrow: `${d.getFullYear()} · ${eventsInMonth} eventos`, inPeriod: sameMonth(d, t) }
+      return { title: capitalize(MONTHS[d.getMonth()]!), eyebrow: `${d.getFullYear()} · ${eventsInMonth} eventos`, inPeriod: sameMonth(d, t) }
     case 'week': {
       const mon = mondayOf(d)
       return { title: weekRangeLabel(d), eyebrow: `Semana ${isoWeek(mon)} · ${addDays(mon, 6).getFullYear()}`, inPeriod: toIso(mon) === toIso(mondayOf(t)) }
     }
     case 'day':
-      return { title: `${DAYS[weekday(d)]} ${d.getDate()}`, eyebrow: `${MONTHS[d.getMonth()]} ${d.getFullYear()}${date === today ? ' · hoy' : ''}`, inPeriod: date === today }
+      return { title: `${DAYS[weekday(d)]} ${d.getDate()}`, eyebrow: `${capitalize(MONTHS[d.getMonth()]!)} ${d.getFullYear()}${date === today ? ' · Hoy' : ''}`, inPeriod: date === today }
     case 'habits':
       return { title: 'Hábitos', eyebrow: `Semana ${isoWeek(d)} · ${weekRangeLabel(d)}`, inPeriod: toIso(mondayOf(d)) === toIso(mondayOf(t)) }
   }

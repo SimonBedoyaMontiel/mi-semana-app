@@ -10,7 +10,8 @@ import { emptyData } from '@shared/model'
 import { sanitize } from '@shared/sanitize'
 import { mergeBackup, parseBackup, toBackupFile } from '@shared/backup'
 import { Cloud, friendlyError } from '@shared/cloud'
-import { SyncEngine, emptySyncState } from '@shared/sync'
+import type { Identity } from '@shared/cloud'
+import { SyncEngine, adoptAccount, emptySyncState } from '@shared/sync'
 import type { SyncState, SyncStatus } from '@shared/sync'
 import { toIso } from '@shared/dates'
 
@@ -84,26 +85,30 @@ export function createWebApi(): MiSemanaApi {
   // ---- Sync ----
   const url = import.meta.env.VITE_SUPABASE_URL
   const key = import.meta.env.VITE_SUPABASE_KEY
-  const cloud = url && key ? new Cloud({ url, key }, window.localStorage) : null
+  // detectSessionInUrl: Google and e-mail links come back to this page with ?code=…
+  const cloud = url && key ? new Cloud({ url, key }, window.localStorage, { detectSessionInUrl: true }) : null
+  const here = (): string => `${location.origin}${location.pathname}`
   let status: SyncStatus = { configured: !!cloud, phase: cloud ? 'signed-out' : 'off', email: null, lastSync: null, error: null }
   const setStatus = (patch: Partial<SyncStatus>): void => {
     status = { ...status, ...patch }
     for (const fn of syncListeners) fn(status)
   }
+  const replaceLocal = (next: AppData): void => {
+    data = next
+    flushNow()
+    for (const fn of dataListeners) fn(data)
+  }
   const engine = cloud
     ? new SyncEngine(cloud.transport, {
         get: () => data,
-        replace: next => {
-          data = next
-          persist()
-          for (const fn of dataListeners) fn(data)
-        },
+        replace: replaceLocal,
         loadState: readSyncState,
         saveState: s => localStorage.setItem(SYNC_KEY, JSON.stringify(s)),
       })
     : null
 
   let syncTimer = 0
+  let interval = 0
   const runSync = async (): Promise<void> => {
     if (!engine || !status.email || !navigator.onLine) return
     setStatus({ phase: 'syncing' })
@@ -118,12 +123,31 @@ export function createWebApi(): MiSemanaApi {
     window.clearTimeout(syncTimer)
     syncTimer = window.setTimeout(() => void runSync(), ms)
   }
+  let adopted: string | null = null
+  const signedIn = async (who: Identity): Promise<void> => {
+    if (adopted === who.id) return
+    adopted = who.id
+    const { state, clearLocal } = adoptAccount(readSyncState(), who.id)
+    if (clearLocal) replaceLocal({ ...emptyData(), settings: data.settings })
+    localStorage.setItem(SYNC_KEY, JSON.stringify(state))
+    setStatus({ email: who.email, phase: 'idle', error: null })
+    window.clearInterval(interval)
+    interval = window.setInterval(() => void runSync(), SYNC_EVERY_MS)
+    await runSync()
+  }
   if (cloud) {
-    void cloud.email().then(email => {
-      setStatus({ email, phase: email ? 'idle' : 'signed-out' })
-      if (email) void runSync()
+    cloud.onAuthChange((who, event) => {
+      if (event === 'recovery') setStatus({ recovery: true })
+      // Supabase holds its auth lock during this callback: defer any call back into it.
+      if (who) window.setTimeout(() => void signedIn(who), 0)
+      else if (event === 'signed-out') {
+        adopted = null
+        setStatus({ email: null, phase: 'signed-out', lastSync: null })
+      }
+      // Drop ?code=… from the address bar once the session is in.
+      if (who && /[?&]code=/.test(location.search)) history.replaceState(null, '', here())
     })
-    window.setInterval(() => void runSync(), SYNC_EVERY_MS)
+    void cloud.identity().then(who => who && signedIn(who))
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && scheduleSync(300))
     window.addEventListener('online', () => scheduleSync(300))
   }
@@ -173,22 +197,36 @@ export function createWebApi(): MiSemanaApi {
       status: async () => status,
       signIn: async (email, password) => {
         if (!cloud) throw new Error('La sincronización no está configurada.')
-        await cloud.signIn(email.trim(), password)
-        setStatus({ email: email.trim(), phase: 'idle', error: null })
-        await runSync()
+        await signedIn(await cloud.signIn(email.trim(), password))
       },
       signUp: async (email, password) => {
         if (!cloud) throw new Error('La sincronización no está configurada.')
-        const needsConfirmation = await cloud.signUp(email.trim(), password)
-        if (!needsConfirmation) {
-          setStatus({ email: email.trim(), phase: 'idle', error: null })
-          await runSync()
-        }
-        return needsConfirmation
+        const who = await cloud.signUp(email.trim(), password, here())
+        if (who) await signedIn(who)
+        return !who
       },
-      signOut: async () => {
+      signInWithGoogle: async () => {
+        if (!cloud) throw new Error('La sincronización no está configurada.')
+        flushNow()
+        location.assign(await cloud.googleUrl(here()))
+      },
+      resetPassword: async email => {
+        if (!cloud) throw new Error('La sincronización no está configurada.')
+        await cloud.resetPassword(email.trim(), here())
+      },
+      updatePassword: async password => {
+        if (!cloud) throw new Error('La sincronización no está configurada.')
+        await cloud.updatePassword(password)
+        setStatus({ recovery: false })
+      },
+      signOut: async opts => {
+        window.clearInterval(interval)
         await cloud?.signOut()
-        localStorage.removeItem(SYNC_KEY)
+        adopted = null
+        if (opts?.clearLocal) {
+          replaceLocal({ ...emptyData(), settings: data.settings })
+          localStorage.removeItem(SYNC_KEY)
+        }
         setStatus({ email: null, phase: 'signed-out', lastSync: null, error: null })
       },
       now: runSync,

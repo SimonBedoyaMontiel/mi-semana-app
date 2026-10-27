@@ -18,6 +18,7 @@ Los datos se guardan en `%APPDATA%\Mi Semana\data\data.json`, con una copia auto
 
 - **Cuenta**: Ajustes → Sincronización. Con la misma cuenta en el PC y en el móvil, eventos, hábitos y notas quedan iguales en ambos (los ajustes no se comparten). Si se edita lo mismo en dos sitios, gana el cambio más reciente.
 - **Móvil**: la versión web (`src/web`) se publica sola en GitHub Pages al cambiar `main`. En el teléfono, ábrela y elige «Añadir a pantalla de inicio»; funciona sin conexión.
+- **Cuentas**: con Google o con correo y contraseña (con recuperación por correo). En la web la cuenta es opcional; al cerrar sesión se puede borrar la copia del navegador. Si en un equipo entra otra cuenta, los datos de la anterior no se mezclan.
 - **Configurar Supabase** (una vez): crea un proyecto, ejecuta `supabase/schema.sql` en el SQL Editor y copia la URL y la clave pública en `.env` (ver `.env.example`) y en los secretos `SUPABASE_URL` / `SUPABASE_KEY` del repositorio.
 
 ## Publicar una versión

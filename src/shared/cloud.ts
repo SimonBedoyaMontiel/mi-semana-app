@@ -1,6 +1,7 @@
 /**
- * Supabase adapter shared by the desktop main process and the mobile web app.
- * Tables and policies: supabase/schema.sql.
+ * Supabase adapter shared by the desktop main process and the web app.
+ * Tables and policies: supabase/schema.sql. Auth uses the PKCE flow everywhere, so the same code
+ * works for a browser redirect (web) and a custom-protocol callback (desktop).
  */
 import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -17,16 +18,26 @@ export interface CloudConfig {
   key: string
 }
 
+export interface Identity {
+  id: string
+  email: string | null
+}
+
+export type AuthEvent = 'signed-in' | 'signed-out' | 'recovery'
+
 const PAGE = 1000
 /** Re-read a few seconds before the cursor: rows committed late with an older timestamp still arrive. */
 const OVERLAP_MS = 5000
 
 const ERRORS: Array<[RegExp, string]> = [
   [/invalid login credentials/i, 'Correo o contraseña incorrectos.'],
-  [/email not confirmed/i, 'Confirma tu correo: revisa la bandeja de entrada y pulsa el enlace de Supabase.'],
-  [/user already registered/i, 'Ya existe una cuenta con ese correo. Usa «Entrar».'],
+  [/email not confirmed/i, 'Todavía no confirmaste tu correo. Abre el enlace que te enviamos y vuelve a entrar.'],
+  [/user already registered/i, 'Ya existe una cuenta con ese correo. Entra con ella.'],
   [/password should be at least/i, 'La contraseña debe tener al menos 6 caracteres.'],
-  [/rate limit/i, 'Demasiados intentos. Espera un minuto y vuelve a probar.'],
+  [/same password|different from the old/i, 'La contraseña nueva tiene que ser distinta de la anterior.'],
+  [/provider is not enabled|unsupported provider/i, 'El acceso con Google todavía no está activado en el servidor.'],
+  [/rate limit|too many/i, 'Demasiados intentos. Espera un minuto y vuelve a probar.'],
+  [/code verifier|invalid flow state|auth code/i, 'El enlace de acceso caducó. Vuelve a intentarlo.'],
   [/fetch failed|failed to fetch|network/i, 'Sin conexión con el servidor.'],
 ]
 
@@ -38,36 +49,82 @@ export function friendlyError(e: unknown): string {
 export class Cloud {
   readonly client: SupabaseClient
 
-  constructor(cfg: CloudConfig, storage: AuthStorage) {
+  constructor(cfg: CloudConfig, storage: AuthStorage, opts: { detectSessionInUrl?: boolean } = {}) {
     this.client = createClient(cfg.url, cfg.key, {
-      auth: { storage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'mi-semana-auth' },
+      auth: {
+        storage,
+        persistSession: true,
+        autoRefreshToken: true,
+        flowType: 'pkce',
+        detectSessionInUrl: opts.detectSessionInUrl ?? false,
+        storageKey: 'mi-semana-auth',
+      },
     })
   }
 
-  async email(): Promise<string | null> {
+  async identity(): Promise<Identity | null> {
     const { data } = await this.client.auth.getSession()
-    return data.session?.user.email ?? null
+    const u = data.session?.user
+    return u ? { id: u.id, email: u.email ?? null } : null
   }
 
-  onAuthChange(cb: (email: string | null) => void): () => void {
-    const { data } = this.client.auth.onAuthStateChange((_event, session) => cb(session?.user.email ?? null))
+  onAuthChange(cb: (who: Identity | null, event: AuthEvent | null) => void): () => void {
+    const { data } = this.client.auth.onAuthStateChange((event, session) => {
+      const who = session?.user ? { id: session.user.id, email: session.user.email ?? null } : null
+      cb(who, event === 'PASSWORD_RECOVERY' ? 'recovery' : event === 'SIGNED_IN' ? 'signed-in' : event === 'SIGNED_OUT' ? 'signed-out' : null)
+    })
     return () => data.subscription.unsubscribe()
   }
 
-  async signIn(email: string, password: string): Promise<void> {
-    const { error } = await this.client.auth.signInWithPassword({ email, password })
+  async signIn(email: string, password: string): Promise<Identity> {
+    const { data, error } = await this.client.auth.signInWithPassword({ email, password })
+    if (error) throw new Error(friendlyError(error))
+    return { id: data.user.id, email: data.user.email ?? null }
+  }
+
+  /** Returns the new identity, or null when the account must confirm its e-mail first. */
+  async signUp(email: string, password: string, confirmRedirect: string): Promise<Identity | null> {
+    const { data, error } = await this.client.auth.signUp({ email, password, options: { emailRedirectTo: confirmRedirect } })
+    if (error) throw new Error(friendlyError(error))
+    // Supabase answers an existing e-mail with an empty identity list instead of an error.
+    if (data.user && !data.user.identities?.length) throw new Error(friendlyError('User already registered'))
+    return data.session && data.user ? { id: data.user.id, email: data.user.email ?? null } : null
+  }
+
+  /** URL of Google's consent screen; the caller decides how to open it (redirect or system browser). */
+  async googleUrl(redirectTo: string): Promise<string> {
+    const { data, error } = await this.client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } },
+    })
+    if (error || !data.url) throw new Error(friendlyError(error ?? 'No se pudo abrir Google.'))
+    return data.url
+  }
+
+  /** Finishes an OAuth or e-mail link that came back with `?code=…`. */
+  async exchange(callbackUrl: string): Promise<Identity> {
+    const url = new URL(callbackUrl)
+    const failure = url.searchParams.get('error_description') ?? new URLSearchParams(url.hash.slice(1)).get('error_description')
+    if (failure) throw new Error(friendlyError(failure))
+    const code = url.searchParams.get('code')
+    if (!code) throw new Error('El enlace de acceso no es válido.')
+    const { data, error } = await this.client.auth.exchangeCodeForSession(code)
+    if (error) throw new Error(friendlyError(error))
+    return { id: data.user.id, email: data.user.email ?? null }
+  }
+
+  async resetPassword(email: string, redirectTo: string): Promise<void> {
+    const { error } = await this.client.auth.resetPasswordForEmail(email, { redirectTo })
     if (error) throw new Error(friendlyError(error))
   }
 
-  /** Returns true when the account still needs its e-mail confirmed. */
-  async signUp(email: string, password: string): Promise<boolean> {
-    const { data, error } = await this.client.auth.signUp({ email, password })
+  async updatePassword(password: string): Promise<void> {
+    const { error } = await this.client.auth.updateUser({ password })
     if (error) throw new Error(friendlyError(error))
-    return !data.session
   }
 
   async signOut(): Promise<void> {
-    await this.client.auth.signOut()
+    await this.client.auth.signOut({ scope: 'local' })
   }
 
   readonly transport: SyncTransport = {

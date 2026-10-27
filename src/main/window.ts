@@ -15,8 +15,8 @@ export const TITLEBAR_HEIGHT = 48
 
 /** Paint colours shared with the renderer tokens so the first frame never flashes. */
 const CHROME = {
-  light: { bg: '#e4e5e8', symbol: '#0e0f13' },
-  dark: { bg: '#0c0d10', symbol: '#edeef2' },
+  light: { bg: '#e8e9ec', symbol: '#15171b' },
+  dark: { bg: '#131313', symbol: '#ececec' },
 }
 
 export const chrome = (): (typeof CHROME)['light'] => (nativeTheme.shouldUseDarkColors ? CHROME.dark : CHROME.light)

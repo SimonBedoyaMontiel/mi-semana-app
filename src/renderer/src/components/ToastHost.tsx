@@ -40,7 +40,7 @@ export function ToastHost() {
               </button>
             )}
             {toast.sticky ? (
-              <button type="button" className="toast-close" aria-label="Cerrar" onClick={() => useStore.setState({ toast: null })}>×</button>
+              <button type="button" className="toast-close" aria-label="Cerrar" onClick={() => useStore.setState({ toast: null })}><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg></button>
             ) : (
               <motion.i
                 className="toast-timer"

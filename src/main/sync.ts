@@ -1,10 +1,11 @@
-import { powerMonitor, safeStorage } from 'electron'
+import { powerMonitor, safeStorage, shell } from 'electron'
 import { promises as fs, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AppData } from '@shared/model'
+import { DESKTOP_AUTH_CALLBACK, WEB_APP_URL, emptyData } from '@shared/model'
 import { Cloud, friendlyError } from '@shared/cloud'
-import type { AuthStorage, CloudConfig } from '@shared/cloud'
-import { SyncEngine, emptySyncState } from '@shared/sync'
+import type { AuthStorage, CloudConfig, Identity } from '@shared/cloud'
+import { SyncEngine, adoptAccount, emptySyncState } from '@shared/sync'
 import type { SyncState, SyncStatus } from '@shared/sync'
 import type { Repository } from './repository'
 
@@ -66,23 +67,26 @@ export class SyncService {
     this.cloud = new Cloud(this.config, encryptedStorage(join(this.dir, 'auth.bin')))
     this.engine = new SyncEngine(this.cloud.transport, {
       get: () => this.repo.snapshot,
-      replace: data => {
-        this.applyingRemote = true
-        this.repo.replace(data)
-        this.applyingRemote = false
-        this.onRemoteData(data)
-      },
+      replace: data => this.replaceLocal(data),
       loadState: () => this.readState(),
-      saveState: s => void fs.writeFile(this.stateFile, JSON.stringify(s)).catch(() => undefined),
+      saveState: s => this.writeState(s),
     })
     this.repo.onChange(() => {
       if (!this.applyingRemote) this.schedule(AFTER_CHANGE_MS)
     })
     powerMonitor.on('resume', () => this.schedule(1500))
-    this.cloud.onAuthChange(email => this.set({ email, phase: email ? this.status.phase === 'signed-out' ? 'idle' : this.status.phase : 'signed-out' }))
-    const email = await this.cloud.email()
-    this.set({ email, phase: email ? 'idle' : 'signed-out' })
-    if (email) this.start()
+    this.cloud.onAuthChange(who => {
+      if (!who && this.status.email) this.set({ email: null, phase: 'signed-out' })
+    })
+    const who = await this.cloud.identity()
+    if (who) await this.signedIn(who)
+  }
+
+  private replaceLocal(data: AppData): void {
+    this.applyingRemote = true
+    this.repo.replace(data)
+    this.applyingRemote = false
+    this.onRemoteData(data)
   }
 
   private readState(): SyncState {
@@ -93,15 +97,24 @@ export class SyncService {
     }
   }
 
+  private writeState(s: SyncState): void {
+    void fs.writeFile(this.stateFile, JSON.stringify(s)).catch(() => undefined)
+  }
+
   private set(patch: Partial<SyncStatus>): void {
     this.status = { ...this.status, ...patch }
     this.broadcast(this.status)
   }
 
-  private start(): void {
+  /** Every way of signing in ends here: claim the local data for this account, then sync. */
+  private async signedIn(who: Identity): Promise<void> {
+    const { state, clearLocal } = adoptAccount(this.readState(), who.id)
+    if (clearLocal) this.replaceLocal({ ...emptyData(), settings: this.repo.snapshot.settings })
+    this.writeState(state)
+    this.set({ email: who.email, phase: 'idle', error: null, waitingForBrowser: false })
     clearInterval(this.timer)
     this.timer = setInterval(() => void this.run(), INTERVAL_MS)
-    void this.run()
+    await this.run()
   }
 
   schedule(ms: number): void {
@@ -121,29 +134,53 @@ export class SyncService {
     }
   }
 
-  async signIn(email: string, password: string): Promise<void> {
+  private need(): Cloud {
     if (!this.cloud) throw new Error('La sincronización no está configurada.')
-    await this.cloud.signIn(email.trim(), password)
-    this.set({ email: email.trim(), phase: 'idle', error: null })
-    this.start()
+    return this.cloud
+  }
+
+  async signIn(email: string, password: string): Promise<void> {
+    await this.signedIn(await this.need().signIn(email.trim(), password))
   }
 
   async signUp(email: string, password: string): Promise<boolean> {
-    if (!this.cloud) throw new Error('La sincronización no está configurada.')
-    const needsConfirmation = await this.cloud.signUp(email.trim(), password)
-    if (!needsConfirmation) {
-      this.set({ email: email.trim(), phase: 'idle', error: null })
-      this.start()
-    }
-    return needsConfirmation
+    const who = await this.need().signUp(email.trim(), password, WEB_APP_URL)
+    if (who) await this.signedIn(who)
+    return !who
   }
 
-  async signOut(): Promise<void> {
+  /** Opens Google in the default browser; the app gets the result through misemana://auth-callback. */
+  async signInWithGoogle(): Promise<void> {
+    const url = await this.need().googleUrl(DESKTOP_AUTH_CALLBACK)
+    this.set({ waitingForBrowser: true, error: null })
+    await shell.openExternal(url)
+  }
+
+  async completeBrowserSignIn(callbackUrl: string): Promise<void> {
+    try {
+      await this.signedIn(await this.need().exchange(callbackUrl))
+    } catch (e) {
+      this.set({ waitingForBrowser: false, phase: 'signed-out', error: friendlyError(e) })
+    }
+  }
+
+  async resetPassword(email: string): Promise<void> {
+    await this.need().resetPassword(email.trim(), WEB_APP_URL)
+  }
+
+  async updatePassword(password: string): Promise<void> {
+    await this.need().updatePassword(password)
+    this.set({ recovery: false })
+  }
+
+  async signOut(clearLocal: boolean): Promise<void> {
     clearInterval(this.timer)
     clearTimeout(this.debounce)
     await this.cloud?.signOut()
-    // A different account must not inherit this account's upload bookkeeping.
-    await fs.unlink(this.stateFile).catch(() => undefined)
+    if (clearLocal) {
+      this.replaceLocal({ ...emptyData(), settings: this.repo.snapshot.settings })
+      this.writeState(emptySyncState())
+    }
     this.set({ email: null, phase: 'signed-out', lastSync: null, error: null })
   }
 

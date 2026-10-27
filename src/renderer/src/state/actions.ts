@@ -2,7 +2,7 @@ import type { CalendarEvent, Habit } from '@shared/model'
 import type { EventItem } from '@shared/events'
 import { countOf, dayProgress, nextTapCount } from '@shared/habits'
 import { fromIso, longDate, todayIso } from '@shared/dates'
-import { burstFrom, celebrate, newId } from '@/lib/fx'
+import { celebrate, newId, ripple } from '@/lib/fx'
 import { rawEvent, useStore } from './store'
 
 const st = useStore.getState
@@ -21,7 +21,7 @@ function plain(e: EventItem): CalendarEvent {
 
 export function toggleEvent(e: EventItem, from?: Element | null): void {
   const done = !e.done
-  if (done) burstFrom(from ?? null, [`var(--cat-${e.cat})`, 'var(--amber)', 'var(--cobalt)'], 12, 52)
+  if (done) ripple(from ?? null, `var(--cat-${e.cat})`)
   if (e.seriesId && e.occurrence) st().dispatch({ type: 'event.occurrence', id: e.seriesId, date: e.occurrence, op: done ? 'done' : 'undone' })
   else st().dispatch({ type: 'event.setDone', id: e.id, done })
 }
@@ -79,7 +79,7 @@ export function tapHabit(h: Habit, date: string, from?: Element | null, delta?: 
   const before = dayProgress(data.habits, data.habitLog, date)
   st().dispatch({ type: 'habitLog.set', date, habitId: h.id, count: next })
   if (next >= h.target && n < h.target) {
-    burstFrom(from ?? null, [`var(--${h.color})`, 'var(--amber)', 'var(--cobalt)'], 14, 60)
+    ripple(from ?? null, `var(--${h.color})`)
     const after = dayProgress(st().data!.habits, st().data!.habitLog, date)
     if (after.total > 1 && after.done === after.total && before.done < before.total) {
       window.setTimeout(() => {

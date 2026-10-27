@@ -25,6 +25,9 @@ nsis:
   shortcutName: Mi Semana
   artifactName: MiSemana-Setup-${version}.${ext}
   deleteAppDataOnUninstall: false
+protocols:
+  - name: Mi Semana
+    schemes: [misemana]
 # Auto-updates read the GitHub Releases of this repo (latest.yml + installer).
 publish:
   provider: github

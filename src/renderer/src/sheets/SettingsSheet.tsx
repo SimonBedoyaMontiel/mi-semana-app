@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { motion } from 'motion/react'
 import type { Settings } from '@shared/model'
 import type { AppInfo } from '@shared/ipc'
 import { useStore } from '@/state/store'
 import { Sheet } from '@/components/Sheet'
-import { Segmented, Switch, cx } from '@/components/primitives'
+import { Segmented, Switch } from '@/components/primitives'
 import { TimeField } from '@/components/TimeField'
 
 const SLOT_FIELDS = [
@@ -18,87 +17,20 @@ const SLOT_FIELDS = [
 const cleanError = (e: unknown): string =>
   e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Algo salió mal.'
 
-function SyncSection() {
+function AccountSection() {
   const sync = useStore(s => s.sync)
-  const notify = useStore(s => s.notify)
-  const [mode, setMode] = useState<'in' | 'up'>('in')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState<string | null>(null)
-
-  if (!sync?.configured) {
-    return (
-      <section>
-        <h3>Sincronización</h3>
-        <p className="hint">Esta copia de Mi Semana se compiló sin las claves de Supabase, así que sincronizar no está disponible.</p>
-      </section>
-    )
-  }
-
-  const submit = async (e: FormEvent): Promise<void> => {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    try {
-      if (mode === 'in') {
-        await window.api.sync.signIn(email, password)
-        notify('Sesión iniciada. Sincronizando tus datos…')
-      } else if (await window.api.sync.signUp(email, password)) {
-        setPending(email)
-        setMode('in')
-      } else notify('Cuenta creada. Sincronizando tus datos…')
-      setPassword('')
-    } catch (err) {
-      setError(cleanError(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (sync.email) {
-    return (
-      <section>
-        <h3>Sincronización</h3>
-        <div className="account">
-          <span className={cx('account-dot', `is-${sync.phase}`)} />
-          <div>
-            <b>{sync.email}</b>
-            <span>
-              {sync.phase === 'syncing' ? 'Sincronizando…'
-                : sync.phase === 'error' ? sync.error
-                  : sync.lastSync ? `Última sincronización: ${new Date(sync.lastSync).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}` : 'Conectado'}
-            </span>
-          </div>
-        </div>
-        <p className="hint">Tus eventos, hábitos y notas se mantienen iguales en todos los dispositivos donde entres con esta cuenta. Los ajustes de cada dispositivo no se comparten.</p>
-        <div className="btn-row">
-          <button type="button" className="btn" disabled={sync.phase === 'syncing'} onClick={() => void window.api.sync.now()}>Sincronizar ahora</button>
-          <button type="button" className="btn ghost" onClick={() => void window.api.sync.signOut()}>Cerrar sesión</button>
-        </div>
-      </section>
-    )
-  }
-
+  const openSheet = useStore(s => s.openSheet)
+  if (!sync?.configured) return null
   return (
     <section>
-      <h3>Sincronización</h3>
-      <p className="hint">Entra con la misma cuenta en el PC y en el móvil para tener todo igual en los dos. Lo que ya tengas aquí se sube al entrar.</p>
-      <AnimatePresence>
-        {pending && (
-          <motion.p className="notice" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            Te enviamos un correo a <b>{pending}</b>. Pulsa el enlace para confirmar la cuenta y después entra aquí.
-          </motion.p>
-        )}
-      </AnimatePresence>
-      <Segmented label="Cuenta" layoutId="auth-mode" size="s" value={mode} onChange={m => { setMode(m); setError(null) }} options={[{ value: 'in', label: 'Entrar' }, { value: 'up', label: 'Crear cuenta' }]} />
-      <form className="auth" onSubmit={e => void submit(e)}>
-        <label className="field"><span>Correo</span><input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></label>
-        <label className="field"><span>Contraseña</span><input type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} required minLength={6} value={password} onChange={e => setPassword(e.target.value)} /></label>
-        <button type="submit" className="btn primary" disabled={busy}>{busy ? 'Un momento…' : mode === 'in' ? 'Entrar' : 'Crear cuenta'}</button>
-      </form>
-      <AnimatePresence>{error && <motion.p className="error" role="alert" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{error}</motion.p>}</AnimatePresence>
+      <h3>Cuenta</h3>
+      <div className="setting-row">
+        <div>
+          <b>{sync.email ?? 'Sin cuenta'}</b>
+          <span>{sync.email ? 'Tus datos se sincronizan entre equipos.' : 'Entra con Google o con tu correo para usar tus datos en cualquier equipo.'}</span>
+        </div>
+        <button type="button" className="btn" onClick={() => openSheet({ kind: 'account' })}>{sync.email ? 'Gestionar' : 'Entrar'}</button>
+      </div>
     </section>
   )
 }
@@ -157,7 +89,7 @@ export function SettingsSheet() {
   return (
     <Sheet title="Ajustes" onClose={close} wide>
       <div className="settings">
-        <SyncSection />
+        <AccountSection />
 
         <section>
           <h3>Apariencia</h3>

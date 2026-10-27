@@ -20,13 +20,25 @@ export interface RecordRow {
 }
 
 export interface SyncState {
+  /** Account the local data belongs to; another account signing in starts from a clean slate. */
+  userId?: string | null
   /** Highest server `modified_at` already pulled. */
   cursor: string | null
   /** Stamp last confirmed on the server for each key, so nothing is pushed twice. */
   pushed: Record<string, number>
 }
 
-export const emptySyncState = (): SyncState => ({ cursor: null, pushed: {} })
+export const emptySyncState = (): SyncState => ({ userId: null, cursor: null, pushed: {} })
+
+/**
+ * Decides what happens to local data when `userId` signs in. Data synced with another account
+ * already lives in that account's cloud copy, so it is cleared here instead of leaking into the new
+ * one. Data never synced before is adopted (uploaded) by whoever signs in first.
+ */
+export function adoptAccount(state: SyncState, userId: string): { state: SyncState; clearLocal: boolean } {
+  if (state.userId && state.userId !== userId) return { state: { ...emptySyncState(), userId }, clearLocal: true }
+  return { state: { ...state, userId }, clearLocal: false }
+}
 
 const DayLog = z.record(z.string(), z.number().int().min(1).max(99))
 const Note = z.string().max(4000)
@@ -154,6 +166,10 @@ export interface SyncStatus {
   email: string | null
   lastSync: number | null
   error: string | null
+  /** Opened from a password-reset e-mail: the UI should ask for a new password. */
+  recovery?: boolean
+  /** Desktop Google sign-in: waiting for the browser to hand the session back. */
+  waitingForBrowser?: boolean
 }
 
 export interface SyncTransport {

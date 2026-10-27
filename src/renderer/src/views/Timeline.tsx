@@ -1,12 +1,11 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { motion } from 'motion/react'
-import type { CalendarEvent } from '@shared/model'
-import type { EventIndex, PlacedEvent } from '@shared/events'
+import type { EventIndex, EventItem, PlacedEvent } from '@shared/events'
 import { hourWindow, layoutDay } from '@shared/events'
 import { fromMin, pad, toMin } from '@shared/dates'
 import { useStore } from '@/state/store'
-import { toggleEvent } from '@/state/actions'
+import { moveEvent, toggleEvent } from '@/state/actions'
 import { useMinute } from '@/state/hooks'
 import { Check, SPRING, cx } from '@/components/primitives'
 
@@ -15,8 +14,9 @@ const LAST_MIN = 23 * 60 + 59
 
 type Drag =
   | { kind: 'create'; day: number; a: number; b: number }
-  | { kind: 'move'; ev: CalendarEvent; day: number; start: number; dur: number; grab: number; x0: number; y0: number; moved: boolean }
-  | { kind: 'resize'; ev: CalendarEvent; day: number; start: number; end: number }
+  | { kind: 'move'; ev: EventItem; day: number; start: number; dur: number; grab: number; x0: number; y0: number; moved: boolean }
+  | { kind: 'resize'; ev: EventItem; day: number; start: number; end: number }
+  | { kind: 'tap'; x0: number; y0: number; evId: string | null }
 
 const snap = (m: number): number => Math.round(m / SNAP) * SNAP
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
@@ -47,7 +47,7 @@ const EventBlock = memo(function EventBlock({ p, h0, hh, compact }: { p: PlacedE
       transition={SPRING}
     >
       <div className="ev-title">{e.text}</div>
-      <div className="ev-time">{e.start}–{e.end}</div>
+      <div className="ev-time">{e.start}–{e.end}{e.repeat && <svg className="ev-repeat" viewBox="0 0 16 16" aria-label="Se repite"><path d="M3 6.5a5 5 0 0 1 8.6-2.3L13 5.6M13 2.5v3.1H9.9M13 9.5a5 5 0 0 1-8.6 2.3L3 10.4M3 13.5v-3.1h3.1" /></svg>}</div>
       {!compact && (
         <button
           type="button"
@@ -82,7 +82,6 @@ function NowLine({ h0, hh }: { h0: number; hh: number }) {
 
 export function Timeline({ days, idx, hh, today, compact = false }: { days: string[]; idx: EventIndex; hh: number; today: string; compact?: boolean }) {
   const openSheet = useStore(s => s.openSheet)
-  const dispatch = useStore(s => s.dispatch)
   const cols = useRef<HTMLDivElement>(null)
   const hover = useRef<HTMLDivElement>(null)
   const dragRef = useRef<Drag | null>(null)
@@ -131,7 +130,7 @@ export function Timeline({ days, idx, hh, today, compact = false }: { days: stri
     return () => window.removeEventListener('keydown', onKey, true)
   }, [drag])
 
-  const findEvent = (id: string): CalendarEvent | undefined => all.find(e => e.id === id)
+  const findEvent = (id: string): EventItem | undefined => all.find(e => e.id === id)
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     if (e.button !== 0) return
@@ -139,6 +138,11 @@ export function Timeline({ days, idx, hh, today, compact = false }: { days: stri
     if (t.closest('.ev-check')) return
     const p = point(e)
     const evEl = t.closest<HTMLElement>('[data-ev]')
+    // Touch: let the page scroll; a short tap opens/creates instead of dragging.
+    if (e.pointerType === 'touch') {
+      update({ kind: 'tap', x0: e.clientX, y0: e.clientY, evId: evEl?.dataset.ev ?? null })
+      return
+    }
     const ev = evEl ? findEvent(evEl.dataset.ev!) : undefined
     if (ev) {
       const start = toMin(ev.start)
@@ -157,6 +161,7 @@ export function Timeline({ days, idx, hh, today, compact = false }: { days: stri
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>): void => {
     const d = dragRef.current
     const p = point(e)
+    if (d?.kind === 'tap') return
     if (!d) {
       // hover hint, written to the DOM directly
       const g = hover.current
@@ -182,6 +187,17 @@ export function Timeline({ days, idx, hh, today, compact = false }: { days: stri
     update(null)
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
     if (!d) return
+    if (d.kind === 'tap') {
+      if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 8) return
+      const ev = d.evId ? findEvent(d.evId) : undefined
+      if (ev) openSheet({ kind: 'event', event: ev })
+      else {
+        const p = point(e)
+        const m = clamp(Math.floor(p.min / 30) * 30, h0 * 60, h1 * 60 - 30)
+        openSheet({ kind: 'event', preset: { date: days[p.day]!, start: fromMin(m), end: fromMin(Math.min(m + 60, LAST_MIN)) } })
+      }
+      return
+    }
     if (d.kind === 'create') {
       const lo = Math.min(d.a, d.b)
       const hi = Math.max(d.a, d.b)
@@ -189,9 +205,9 @@ export function Timeline({ days, idx, hh, today, compact = false }: { days: stri
       openSheet({ kind: 'event', preset: { date: days[d.day]!, start: fromMin(lo), end: fromMin(Math.min(end, LAST_MIN)) } })
     } else if (d.kind === 'move') {
       if (!d.moved) openSheet({ kind: 'event', event: d.ev })
-      else dispatch({ type: 'event.upsert', event: { ...d.ev, date: days[d.day]!, start: fromMin(d.start), end: fromMin(d.start + d.dur) } })
+      else moveEvent(d.ev, { date: days[d.day]!, start: fromMin(d.start), end: fromMin(d.start + d.dur) })
     } else if (d.end !== toMin(d.ev.end)) {
-      dispatch({ type: 'event.upsert', event: { ...d.ev, end: fromMin(d.end) } })
+      moveEvent(d.ev, { date: d.ev.date, start: d.ev.start, end: fromMin(d.end) })
     }
   }
 
@@ -203,10 +219,10 @@ export function Timeline({ days, idx, hh, today, compact = false }: { days: stri
     if (ev) openSheet({ kind: 'event', event: ev })
   }
 
-  const draggingId = drag && drag.kind !== 'create' && (drag.kind === 'resize' || drag.moved) ? drag.ev.id : null
+  const draggingId = drag && (drag.kind === 'resize' || (drag.kind === 'move' && drag.moved)) ? drag.ev.id : null
 
   const preview = (dayIndex: number) => {
-    if (!drag || drag.day !== dayIndex) return null
+    if (!drag || drag.kind === 'tap' || drag.day !== dayIndex) return null
     if (drag.kind === 'create') {
       const lo = Math.min(drag.a, drag.b)
       const hi = Math.max(drag.a, drag.b, lo + SNAP)
@@ -216,7 +232,7 @@ export function Timeline({ days, idx, hh, today, compact = false }: { days: stri
         </div>
       )
     }
-    if (!draggingId) return null
+    if (!draggingId || (drag.kind !== 'move' && drag.kind !== 'resize')) return null
     const start = drag.start
     const end = drag.kind === 'move' ? drag.start + drag.dur : drag.end
     return (

@@ -2,6 +2,7 @@ import type { AppData, Slot } from './model'
 import { SLOT_LABEL } from './constants'
 import { addDays, fromIso, fromMin, toIso, toMin } from './dates'
 import { isActiveOn, isComplete } from './habits'
+import { expandRange } from './events'
 
 export interface Reminder {
   /** Stable identity, so a reminder never fires twice. */
@@ -29,8 +30,8 @@ export function remindersBetween(data: AppData, from: number, to: number): Remin
   const inWindow = (t: number): boolean => t > from && t <= to
 
   if (settings.eventReminders) {
-    for (const e of data.events) {
-      if (!e.start || e.done || e.date < firstDay || e.date > lastDay) continue
+    for (const e of expandRange(data.events, firstDay, lastDay)) {
+      if (!e.start || e.done) continue
       const lead = e.remind ?? settings.eventLeadMinutes
       if (lead < 0) continue
       const t = at(e.date, e.start) - lead * 60_000

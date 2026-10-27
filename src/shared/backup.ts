@@ -115,7 +115,7 @@ export function parseBackup(text: string): BackupPayload {
 }
 
 /** Additive merge: nothing already in the app is overwritten; habit counts keep the higher value. */
-export function mergeBackup(base: AppData, inc: BackupPayload): MergeResult {
+export function mergeBackup(base: AppData, inc: BackupPayload, at = Date.now()): MergeResult {
   const eventIds = new Set(base.events.map(e => e.id))
   const habitIds = new Set(base.habits.map(h => h.id))
   const newEvents = inc.events.filter(e => !eventIds.has(e.id))
@@ -139,10 +139,18 @@ export function mergeBackup(base: AppData, inc: BackupPayload): MergeResult {
   }
 
   const notes: Notes = { ...base.notes }
-  for (const [day, text] of Object.entries(inc.notes)) if (!notes[day]) notes[day] = text
+  const stamps = { ...base.stamps }
+  for (const [day, text] of Object.entries(inc.notes)) {
+    if (notes[day]) continue
+    notes[day] = text
+    stamps[`n:${day}`] = at
+  }
+  for (const e of newEvents) stamps[`e:${e.id}`] = at
+  for (const h of newHabits) stamps[`h:${h.id}`] = at
+  for (const day of Object.keys(habitLog)) if (habitLog[day] !== base.habitLog[day]) stamps[`l:${day}`] = at
 
   return {
-    data: { ...base, events: [...base.events, ...newEvents], habits: [...base.habits, ...newHabits], habitLog, notes },
+    data: { ...base, events: [...base.events, ...newEvents], habits: [...base.habits, ...newHabits], habitLog, notes, stamps },
     added: { events: newEvents.length, habits: newHabits.length, days },
   }
 }

@@ -8,7 +8,8 @@ const shared = { '@shared': resolve('src/shared') }
 export default defineConfig({
   main: {
     resolve: { alias: shared },
-    build: { externalizeDeps: false, minify: true, rollupOptions: { input: resolve('src/main/index.ts') } },
+    // Only package.json "dependencies" (electron-updater) stay external; everything else is bundled.
+    build: { externalizeDeps: true, minify: true, rollupOptions: { input: resolve('src/main/index.ts') } },
   },
   preload: {
     resolve: { alias: shared },

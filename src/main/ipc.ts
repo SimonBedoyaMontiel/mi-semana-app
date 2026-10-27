@@ -8,6 +8,13 @@ import { mergeBackup, parseBackup, toBackupFile } from '@shared/backup'
 import { toIso } from '@shared/dates'
 import type { Repository } from './repository'
 import type { ReminderService } from './reminders'
+import type { SyncService } from './sync'
+import type { Updater } from './updater'
+
+const str = (v: unknown, max: number): string => {
+  if (typeof v !== 'string' || v.length > max) throw new Error('Invalid argument')
+  return v
+}
 
 /** Only frames that load the bundled app may talk to the main process. */
 function trusted(e: IpcMainInvokeEvent): boolean {
@@ -23,7 +30,16 @@ function guard<A extends unknown[], R>(fn: (e: IpcMainInvokeEvent, ...args: A) =
   }
 }
 
-export function registerIpc(repo: Repository, reminders: ReminderService, getWindow: () => BrowserWindow | null): void {
+interface Deps {
+  repo: Repository
+  reminders: ReminderService
+  sync: SyncService
+  updater: Updater
+  getWindow: () => BrowserWindow | null
+  quit: () => void
+}
+
+export function registerIpc({ repo, reminders, sync, updater, getWindow, quit }: Deps): void {
   ipcMain.handle(IPC.load, guard(() => repo.snapshot))
 
   ipcMain.handle(
@@ -76,4 +92,23 @@ export function registerIpc(repo: Repository, reminders: ReminderService, getWin
   ipcMain.handle(IPC.openDataFolder, guard(async () => void (await shell.openPath(repo.dir))))
   ipcMain.handle(IPC.info, guard((): AppInfo => ({ version: app.getVersion(), dataPath: repo.dir })))
   ipcMain.handle(IPC.testNotification, guard(() => reminders.test()))
+
+  ipcMain.handle(IPC.syncStatus, guard(() => sync.current))
+  ipcMain.handle(IPC.syncSignIn, guard((_e, email: unknown, password: unknown) => sync.signIn(str(email, 200), str(password, 200))))
+  ipcMain.handle(IPC.syncSignUp, guard((_e, email: unknown, password: unknown) => sync.signUp(str(email, 200), str(password, 200))))
+  ipcMain.handle(IPC.syncSignOut, guard((_e, opts: unknown) => sync.signOut(!!(opts && typeof opts === 'object' && (opts as { clearLocal?: unknown }).clearLocal === true))))
+  ipcMain.handle(IPC.syncGoogle, guard(() => sync.signInWithGoogle()))
+  ipcMain.handle(IPC.syncReset, guard((_e, email: unknown) => sync.resetPassword(str(email, 200))))
+  ipcMain.handle(IPC.syncUpdatePassword, guard((_e, password: unknown) => sync.updatePassword(str(password, 200))))
+  ipcMain.handle(IPC.syncNow, guard(() => sync.run()))
+
+  ipcMain.handle(IPC.updateStatus, guard(() => updater.current))
+  ipcMain.handle(
+    IPC.updateInstall,
+    guard(() => {
+      quit()
+      repo.flushSync()
+      updater.install()
+    }),
+  )
 }

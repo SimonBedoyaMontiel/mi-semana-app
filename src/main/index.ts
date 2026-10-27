@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron'
 import { app, Menu, nativeTheme } from 'electron'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import iconPath from '../../resources/icon.png?asset'
 import { IPC } from '@shared/ipc'
 import type { ShortcutAction } from '@shared/ipc'
@@ -10,9 +10,17 @@ import { ReminderService } from './reminders'
 import { registerIpc } from './ipc'
 import { createTray } from './tray'
 import { createMainWindow, rendererEntry } from './window'
+import { SyncService } from './sync'
+import { Updater } from './updater'
 
 const APP_ID = 'app.misemana.desktop'
+const PROTOCOL = 'misemana'
 const startedHidden = process.argv.includes('--hidden')
+const protocolUrl = (argv: readonly string[]): string | undefined => argv.find(a => a.startsWith(`${PROTOCOL}://`))
+
+// misemana:// links (Google sign-in callback) open this app. In development Electron runs a script.
+if (process.defaultApp) app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [resolve(process.argv[1] ?? '.')])
+else app.setAsDefaultProtocolClient(PROTOCOL)
 
 // Spanish (Spain) locale: 24-hour time pickers and Spanish spell-check regardless of the OS region.
 app.commandLine.appendSwitch('lang', 'es-ES')
@@ -39,13 +47,31 @@ if (!app.requestSingleInstanceLock()) {
   }
 
   const reminders = new ReminderService(() => repo.snapshot, date => send(IPC.openDate, date), iconPath)
+  const toWindow = (channel: string, payload: unknown): void => {
+    if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
+  }
+  const cloudConfig = import.meta.env.MAIN_VITE_SUPABASE_URL && import.meta.env.MAIN_VITE_SUPABASE_KEY
+    ? { url: import.meta.env.MAIN_VITE_SUPABASE_URL, key: import.meta.env.MAIN_VITE_SUPABASE_KEY }
+    : null
+  const sync = new SyncService(
+    repo,
+    app.getPath('userData'),
+    cloudConfig,
+    status => toWindow(IPC.syncStatus, status),
+    data => toWindow(IPC.external, data),
+  )
+  const updater = new Updater(status => toWindow(IPC.updateStatus, status))
 
   const applySettings = (s: Settings): void => {
     nativeTheme.themeSource = s.theme
     if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: s.launchAtLogin, args: ['--hidden'] })
   }
 
-  app.on('second-instance', show)
+  app.on('second-instance', (_e, argv) => {
+    show()
+    const url = protocolUrl(argv)
+    if (url) void sync.completeBrowserSignIn(url)
+  })
 
   app.whenReady().then(async () => {
     const data = await repo.init()
@@ -78,8 +104,14 @@ if (!app.requestSingleInstanceLock()) {
       win = null
     })
 
-    registerIpc(repo, reminders, () => win)
+    registerIpc({ repo, reminders, sync, updater, getWindow: () => win, quit: () => (quitting = true) })
     reminders.start()
+    win.on('focus', () => sync.schedule(800))
+    void sync.init().then(() => {
+      const url = protocolUrl(process.argv)
+      if (url) void sync.completeBrowserSignIn(url)
+    })
+    updater.start()
     createTray(iconPath, {
       show,
       newEvent: () => send(IPC.shortcut, 'new-event' satisfies ShortcutAction),
@@ -93,6 +125,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => {
     quitting = true
     reminders.stop()
+    sync.stop()
     repo.flushSync()
   })
 

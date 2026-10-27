@@ -1,45 +1,33 @@
 const reduced = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const INKS = ['var(--cobalt)', 'var(--vermilion)', 'var(--amber)', 'var(--teal)', 'var(--magenta)']
-
 /**
- * Particle burst on the compositor: absolutely positioned nodes animated with WAAPI,
- * removed when finished. No canvas, no React state, no layout work per frame.
+ * Completion feedback: a thin ring that expands from the element and fades. Runs on the compositor
+ * (transform + opacity via WAAPI) and removes itself; no React state involved.
  */
-export function burst(x: number, y: number, colors: readonly string[] = INKS, count = 14, spread = 64): void {
-  if (reduced()) return
-  const layer = document.createDocumentFragment()
-  const nodes: HTMLElement[] = []
-  for (let i = 0; i < count; i++) {
-    const n = document.createElement('i')
-    const size = 4 + Math.random() * 6
-    n.className = 'spark'
-    n.style.cssText = `left:${x}px;top:${y}px;width:${size}px;height:${size * (Math.random() < 0.4 ? 2.4 : 1)}px;background:${colors[i % colors.length]};border-radius:${Math.random() < 0.5 ? '50%' : '1px'}`
-    layer.appendChild(n)
-    nodes.push(n)
-  }
-  document.body.appendChild(layer)
-  for (const n of nodes) {
-    const a = Math.random() * Math.PI * 2
-    const d = spread * (0.45 + Math.random() * 0.8)
-    n.animate(
-      [
-        { transform: 'translate(-50%,-50%) scale(1) rotate(0deg)', opacity: 1 },
-        { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d + 24}px)) scale(.2) rotate(${Math.random() * 720 - 360}deg)`, opacity: 0 },
-      ],
-      { duration: 650 + Math.random() * 500, easing: 'cubic-bezier(.12,.8,.24,1)' },
-    ).onfinish = () => n.remove()
-  }
-}
-
-export function burstFrom(el: Element | null, colors?: readonly string[], count?: number, spread?: number): void {
-  if (!el) return
+export function ripple(el: Element | null, color = 'var(--accent)'): void {
+  if (!el || reduced()) return
   const r = el.getBoundingClientRect()
-  burst(r.left + r.width / 2, r.top + r.height / 2, colors, count, spread)
+  const size = Math.max(r.width, r.height)
+  const ring = document.createElement('i')
+  ring.className = 'ripple'
+  ring.style.cssText = `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;width:${size}px;height:${size}px;border-color:${color}`
+  document.body.appendChild(ring)
+  ring.animate(
+    [
+      { transform: 'translate(-50%,-50%) scale(0.7)', opacity: 0.7 },
+      { transform: 'translate(-50%,-50%) scale(2.1)', opacity: 0 },
+    ],
+    { duration: 620, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' },
+  ).onfinish = () => ring.remove()
 }
 
+/** Whole day done: a soft wash of the accent colour across the window. */
 export function celebrate(): void {
-  burst(window.innerWidth / 2, window.innerHeight * 0.35, INKS, 60, 260)
+  if (reduced()) return
+  const wash = document.createElement('i')
+  wash.className = 'wash'
+  document.body.appendChild(wash)
+  wash.animate([{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 0 }], { duration: 1400, easing: 'ease-out' }).onfinish = () => wash.remove()
 }
 
 export const newId = (): string => crypto.randomUUID().replace(/-/g, '').slice(0, 16)

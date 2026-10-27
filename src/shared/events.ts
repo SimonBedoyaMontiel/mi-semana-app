@@ -1,6 +1,59 @@
 import type { CalendarEvent, Category } from './model'
 import { CATEGORIES } from './constants'
-import { fromMin, pad, toMin } from './dates'
+import { addDays, fromIso, fromMin, pad, toIso, toMin, weekday } from './dates'
+
+/**
+ * What views render: a one-off event, or one dated occurrence of a recurring series.
+ * Occurrences get `id = <seriesId>@<date>` so keys stay unique across a week.
+ */
+export type EventItem = CalendarEvent & { seriesId?: string; occurrence?: string }
+
+const dayNumber = (iso: string): number => {
+  const [y = 1970, m = 1, d = 1] = iso.split('-').map(Number)
+  return Math.round(Date.UTC(y, m - 1, d) / 864e5)
+}
+
+/** Whether a recurring event happens on `date` (exceptions excluded). */
+export function occursOn(e: CalendarEvent, date: string): boolean {
+  const r = e.repeat
+  if (!r) return e.date === date
+  if (date < e.date || (r.until && date > r.until) || e.exceptions?.includes(date)) return false
+  const diff = dayNumber(date) - dayNumber(e.date)
+  switch (r.freq) {
+    case 'daily':
+      return diff % r.interval === 0
+    case 'weekly': {
+      const startMonday = dayNumber(e.date) - weekday(fromIso(e.date))
+      const week = Math.floor((dayNumber(date) - startMonday) / 7)
+      const days = r.days ?? [weekday(fromIso(e.date))]
+      return week % r.interval === 0 && days.includes(weekday(fromIso(date)))
+    }
+    case 'monthly': {
+      const a = fromIso(e.date)
+      const b = fromIso(date)
+      const months = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth()
+      return months % r.interval === 0 && b.getDate() === a.getDate()
+    }
+  }
+}
+
+/** Every event and occurrence dated within [from, to] (inclusive ISO dates). */
+export function expandRange(events: readonly CalendarEvent[], from: string, to: string): EventItem[] {
+  const out: EventItem[] = []
+  for (const e of events) {
+    if (!e.repeat) {
+      if (e.date >= from && e.date <= to) out.push(e)
+      continue
+    }
+    const last = e.repeat.until && e.repeat.until < to ? e.repeat.until : to
+    for (let d = fromIso(e.date > from ? e.date : from); toIso(d) <= last; d = addDays(d, 1)) {
+      const date = toIso(d)
+      if (!occursOn(e, date)) continue
+      out.push({ ...e, id: `${e.id}@${date}`, date, done: !!e.doneDates?.includes(date), seriesId: e.id, occurrence: date })
+    }
+  }
+  return out
+}
 
 /** Timed events first, by start; untimed after, by creation. */
 export function byTime(a: CalendarEvent, b: CalendarEvent): number {
@@ -11,11 +64,11 @@ export function byTime(a: CalendarEvent, b: CalendarEvent): number {
   )
 }
 
-export type EventIndex = ReadonlyMap<string, readonly CalendarEvent[]>
+export type EventIndex = ReadonlyMap<string, readonly EventItem[]>
 
 /** O(n) grouping by date; each bucket sorted once. */
-export function indexByDate(events: readonly CalendarEvent[]): EventIndex {
-  const map = new Map<string, CalendarEvent[]>()
+export function indexByDate(events: readonly EventItem[]): EventIndex {
+  const map = new Map<string, EventItem[]>()
   for (const e of events) {
     const bucket = map.get(e.date)
     if (bucket) bucket.push(e)
@@ -28,7 +81,7 @@ export function indexByDate(events: readonly CalendarEvent[]): EventIndex {
 export const durationOf = (e: CalendarEvent): number => (e.start && e.end ? Math.max(0, toMin(e.end) - toMin(e.start)) : 0)
 
 export interface PlacedEvent {
-  event: CalendarEvent
+  event: EventItem
   startMin: number
   endMin: number
   col: number
@@ -39,7 +92,7 @@ export interface PlacedEvent {
  * Side-by-side placement for overlapping timed events. Events are grouped into clusters of
  * transitively overlapping items; each item takes the first free column within its cluster.
  */
-export function layoutDay(events: readonly CalendarEvent[], minHeightMin = 20): PlacedEvent[] {
+export function layoutDay(events: readonly EventItem[], minHeightMin = 20): PlacedEvent[] {
   const items = events
     .filter(e => e.start)
     .map(e => {

@@ -1,11 +1,19 @@
 import { z } from 'zod'
-import { CATEGORIES, DEFAULT_SETTINGS, HABIT_KINDS, INKS, ISO_DATE, SLOTS, TIME } from './constants'
+import { CATEGORIES, DEFAULT_SETTINGS, HABIT_KINDS, INKS, ISO_DATE, REPEAT_FREQS, SLOTS, TIME } from './constants'
 
 export * from './constants'
 
 const isoDate = z.string().regex(ISO_DATE)
 const time = z.string().regex(TIME)
 const optionalTime = z.union([time, z.literal('')])
+
+export const RepeatSchema = z.object({
+  freq: z.enum(REPEAT_FREQS),
+  interval: z.number().int().min(1).max(30),
+  /** Weekly only: Monday = 0 … Sunday = 6. Defaults to the weekday of the first date. */
+  days: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
+  until: isoDate.optional(),
+})
 
 export const CalendarEventSchema = z
   .object({
@@ -18,6 +26,11 @@ export const CalendarEventSchema = z
     done: z.boolean(),
     createdAt: z.number().int().nonnegative(),
     remind: z.number().int().min(-1).max(24 * 60).optional(),
+    repeat: RepeatSchema.optional(),
+    /** Recurring only: dates removed from the series. */
+    exceptions: z.array(isoDate).max(2000).optional(),
+    /** Recurring only: occurrences marked as done. */
+    doneDates: z.array(isoDate).max(5000).optional(),
   })
   .refine(e => (e.start === '' ? e.end === '' : e.end !== '' && e.end > e.start), {
     message: 'La hora de fin tiene que ser posterior a la de inicio',
@@ -58,12 +71,17 @@ export const AppDataSchema = z.object({
   habitLog: HabitLogSchema,
   notes: NotesSchema,
   settings: SettingsSchema,
+  /** Sync bookkeeping: record key → last change (ms). Keys: e:<id>, h:<id>, l:<date>, n:<date>. */
+  stamps: z.record(z.string(), z.number()),
+  /** Record key → deletion time (ms), so deletions travel between devices. */
+  tombs: z.record(z.string(), z.number()),
 })
 
 export type Category = (typeof CATEGORIES)[number]
 export type Ink = (typeof INKS)[number]
 export type Slot = (typeof SLOTS)[number]
 export type HabitKind = (typeof HABIT_KINDS)[number]
+export type Repeat = z.infer<typeof RepeatSchema>
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>
 export type Habit = z.infer<typeof HabitSchema>
 export type HabitLog = z.infer<typeof HabitLogSchema>
@@ -78,4 +96,6 @@ export const emptyData = (): AppData => ({
   habitLog: {},
   notes: {},
   settings: structuredClone(DEFAULT_SETTINGS),
+  stamps: {},
+  tombs: {},
 })

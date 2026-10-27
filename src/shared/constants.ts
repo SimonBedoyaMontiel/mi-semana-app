@@ -11,6 +11,7 @@ export const CATEGORIES = ['trabajo', 'estudio', 'salud', 'personal', 'otro'] as
 export const INKS = ['cobalt', 'vermilion', 'amber', 'green', 'teal', 'violet', 'magenta'] as const
 export const SLOTS = ['manana', 'mediodia', 'tarde', 'noche', 'cualquiera'] as const
 export const HABIT_KINDS = ['habito', 'suplemento'] as const
+export const REPEAT_FREQS = ['daily', 'weekly', 'monthly'] as const
 
 /** Minutes before start; -1 disables the reminder for that event. */
 export const REMINDER_CHOICES = [-1, 0, 5, 10, 15, 30, 60, 120] as const
@@ -51,3 +52,14 @@ export const INK_LABEL: Record<Ink, string> = {
   violet: 'Violeta',
   magenta: 'Magenta',
 }
+
+export const REPEAT_LABEL: Record<(typeof REPEAT_FREQS)[number], string> = {
+  daily: 'Cada día',
+  weekly: 'Cada semana',
+  monthly: 'Cada mes',
+}
+
+/** Public web app. E-mail confirmations and password resets land here, also for desktop users. */
+export const WEB_APP_URL = 'https://simonbedoyamontiel.github.io/mi-semana-app/'
+/** Desktop OAuth callback, registered as a Windows protocol by the installer. */
+export const DESKTOP_AUTH_CALLBACK = 'misemana://auth-callback'

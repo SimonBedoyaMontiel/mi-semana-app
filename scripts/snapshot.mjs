@@ -58,6 +58,7 @@ const data = {
     ev(-2, '17:00', '18:00', 'Yoga', 'salud', true),
     ev(5, '', '', 'Comprar regalo', 'personal'),
     ev(8, '15:00', '16:00', 'Revisión trimestral', 'trabajo'),
+    { ...ev(-14, '07:00', '07:45', 'Correr', 'salud'), repeat: { freq: 'weekly', interval: 1, days: [0, 2, 4] } },
   ],
   habits,
   habitLog,

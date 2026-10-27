@@ -1,9 +1,11 @@
 import type { Command } from './commands'
 import type { AppData } from './model'
+import type { SyncStatus } from './sync'
 
 export const IPC = {
   load: 'data:load',
   dispatch: 'data:dispatch',
+  external: 'data:external',
   exportFile: 'data:export',
   importFile: 'data:import',
   openDataFolder: 'app:open-data-folder',
@@ -11,6 +13,16 @@ export const IPC = {
   testNotification: 'app:test-notification',
   openDate: 'app:open-date',
   shortcut: 'app:shortcut',
+  syncStatus: 'sync:status',
+  syncSignIn: 'sync:sign-in',
+  syncSignUp: 'sync:sign-up',
+  syncSignOut: 'sync:sign-out',
+  syncGoogle: 'sync:google',
+  syncReset: 'sync:reset-password',
+  syncUpdatePassword: 'sync:update-password',
+  syncNow: 'sync:now',
+  updateStatus: 'update:status',
+  updateInstall: 'update:install',
 } as const
 
 export interface ImportOutcome {
@@ -24,11 +36,21 @@ export interface AppInfo {
 }
 
 export type ShortcutAction = 'new-event'
+export type Platform = 'desktop' | 'web'
 
-/** The only surface the renderer can reach. Exposed by the preload through contextBridge. */
+export interface UpdateStatus {
+  phase: 'idle' | 'downloading' | 'ready'
+  version?: string
+  percent?: number
+}
+
+/** The only surface the renderer can reach. Desktop: preload via contextBridge. Web: src/web/api.ts. */
 export interface MiSemanaApi {
+  readonly platform: Platform
   load(): Promise<AppData>
   dispatch(cmd: Command): Promise<void>
+  /** Data changed outside this window (sync from another device). */
+  onExternalData(cb: (data: AppData) => void): () => void
   exportFile(): Promise<string | null>
   importFile(): Promise<ImportOutcome | null>
   openDataFolder(): Promise<void>
@@ -36,4 +58,23 @@ export interface MiSemanaApi {
   testNotification(): Promise<void>
   onOpenDate(cb: (date: string) => void): () => void
   onShortcut(cb: (action: ShortcutAction) => void): () => void
+  sync: {
+    status(): Promise<SyncStatus>
+    signIn(email: string, password: string): Promise<void>
+    /** Resolves true when the account must confirm its e-mail before signing in. */
+    signUp(email: string, password: string): Promise<boolean>
+    /** Desktop: opens the system browser. Web: redirects this page to Google. */
+    signInWithGoogle(): Promise<void>
+    resetPassword(email: string): Promise<void>
+    updatePassword(password: string): Promise<void>
+    /** `clearLocal` also removes this device's copy of the data (shared computers). */
+    signOut(opts?: { clearLocal?: boolean }): Promise<void>
+    now(): Promise<void>
+    onStatus(cb: (s: SyncStatus) => void): () => void
+  }
+  updates: {
+    status(): Promise<UpdateStatus>
+    install(): Promise<void>
+    onStatus(cb: (s: UpdateStatus) => void): () => void
+  }
 }

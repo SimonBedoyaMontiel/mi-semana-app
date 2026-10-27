@@ -7,7 +7,7 @@ import { SUGGESTIONS, countOf, dayProgress, habitMeta, isActiveOn, streak } from
 import { useStore } from '@/state/store'
 import { useToday } from '@/state/hooks'
 import { tapHabit } from '@/state/actions'
-import { burstFrom, newId } from '@/lib/fx'
+import { newId, ripple } from '@/lib/fx'
 import { Check, Icon, Ring, cx } from '@/components/primitives'
 
 const HEAT_WEEKS = 18
@@ -146,7 +146,7 @@ export function HabitsView() {
                 whileHover={{ y: -3 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={e => {
-                  burstFrom(e.currentTarget, [`var(--${s.color})`, 'var(--amber)'], 10, 44)
+                  ripple(e.currentTarget, `var(--${s.color})`)
                   dispatch({
                     type: 'habit.upsert',
                     habit: {
@@ -157,7 +157,7 @@ export function HabitsView() {
                   notify(`Añadido: ${s.name}. Puedes editar la dosis o los días con el lápiz.`)
                 }}
               >
-                <b>+</b>{s.name}{s.dose && <em>{s.dose}</em>}
+                <b aria-hidden="true"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></b>{s.name}{s.dose && <em>{s.dose}</em>}
               </motion.button>
             ))}
           </div>

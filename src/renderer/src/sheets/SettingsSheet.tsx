@@ -124,9 +124,15 @@ function DesignPane({ settings, set }: { settings: Settings; set: (patch: Partia
     }
   }
 
+  /** With no picture yet, or tapping the picture already in use, the card asks for a (new) picture. */
   const chooseBackdrop = (b: Backdrop): void => {
-    if (b === 'photo' && !photo) file.current?.click()
+    if (b === 'photo' && (!photo || look.backdrop === 'photo')) file.current?.click()
     else setLook({ backdrop: b })
+  }
+  const dropPhoto = (): void => {
+    removePhoto()
+    if (look.backdrop === 'photo') setLook({ backdrop: 'none' })
+    notify('Imagen quitada.')
   }
 
   return (
@@ -226,22 +232,29 @@ function DesignPane({ settings, set }: { settings: Settings; set: (patch: Partia
         <h3>Fondo</h3>
         <div className="backdrop-grid">
           {BACKDROPS.map((b, i) => (
-            <motion.button
-              key={b}
-              type="button"
-              className={cx('bd-card', `bd-${b}`, look.backdrop === b && 'is-active')}
-              aria-pressed={look.backdrop === b}
-              onClick={() => chooseBackdrop(b)}
-              style={b === 'photo' && photo ? ({ '--photo': `url("${photo}")` } as CSSProperties) : undefined}
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1, transition: { delay: i * 0.03, ...SPRING } }}
-              whileHover={{ y: -3 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <span className="bd-pv" aria-hidden="true">{b === 'photo' && !photo && Icon.image}</span>
-              <span className="theme-name">{BACKDROP_LABEL[b]}</span>
-              {look.backdrop === b && <motion.span layoutId="bd-ring" className="theme-ring" transition={SPRING} />}
-            </motion.button>
+            <div key={b} className="bd-slot">
+              <motion.button
+                type="button"
+                className={cx('bd-card', `bd-${b}`, look.backdrop === b && 'is-active')}
+                aria-pressed={look.backdrop === b}
+                onClick={() => chooseBackdrop(b)}
+                style={b === 'photo' && photo ? ({ '--photo': `url("${photo}")` } as CSSProperties) : undefined}
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1, transition: { delay: i * 0.03, ...SPRING } }}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <span className="bd-pv" aria-hidden="true">{b === 'photo' && !photo && Icon.image}</span>
+                <span className="theme-name">{BACKDROP_LABEL[b]}</span>
+                {look.backdrop === b && <motion.span layoutId="bd-ring" className="theme-ring" transition={SPRING} />}
+              </motion.button>
+              {b === 'photo' && photo && (
+                <motion.div className="bd-actions" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 20, delay: 0.25 }}>
+                  <button type="button" title="Cambiar imagen" aria-label="Cambiar imagen" onClick={() => file.current?.click()}>{Icon.image}</button>
+                  <button type="button" title="Quitar imagen" aria-label="Quitar imagen" onClick={dropPhoto}>{Icon.close}</button>
+                </motion.div>
+              )}
+            </div>
           ))}
         </div>
         <input ref={file} type="file" accept="image/*" className="visually-hidden" tabIndex={-1} onChange={e => { void pickPhoto(e.target.files?.[0]); e.target.value = '' }} />
@@ -253,12 +266,6 @@ function DesignPane({ settings, set }: { settings: Settings; set: (patch: Partia
                 <input type="range" min={10} max={100} step={5} value={look.glow} onChange={e => setLook({ glow: Number(e.target.value) })} style={{ '--v': `${look.glow}%` } as CSSProperties} />
               </label>
               <Switch label="Fondo en movimiento" on={look.moving} onChange={moving => setLook({ moving })} />
-              {look.backdrop === 'photo' && (
-                <div className="btn-row">
-                  <button type="button" className="btn" onClick={() => file.current?.click()}>{Icon.image}Cambiar imagen</button>
-                  {photo && <button type="button" className="btn ghost danger" onClick={() => { removePhoto(); setLook({ backdrop: 'none' }) }}>Quitar imagen</button>}
-                </div>
-              )}
               {look.backdrop === 'photo' && <p className="hint">Tu imagen se guarda solo en este equipo. El resto del diseño viaja con tu cuenta.</p>}
             </motion.div>
           )}

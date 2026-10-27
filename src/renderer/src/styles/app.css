@@ -687,6 +687,16 @@ button:disabled { cursor: default; }
 .bd-pv { height: 52px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); background-color: var(--bg); background-size: cover; background-position: center; transition: transform 0.5s var(--ease); }
 .bd-card { overflow: hidden; }
 .bd-card .theme-ring { inset: 0; border-radius: 12px; }
+.bd-slot { position: relative; display: grid; }
+.bd-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 5px; }
+.bd-actions button {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--ink);
+  background: color-mix(in oklab, var(--solid) 88%, transparent); box-shadow: var(--shadow-2); backdrop-filter: blur(6px);
+  transition: transform 0.3s var(--bounce), background var(--fast), color var(--fast);
+}
+.bd-actions button:hover { transform: scale(1.15); background: var(--solid); }
+.bd-actions button:last-child:hover { color: var(--danger); }
+.bd-actions .ico { width: 15px; height: 15px; }
 .bd-card:hover .bd-pv { transform: scale(1.06); }
 .bd-none .bd-pv { background-image: repeating-linear-gradient(135deg, var(--line-2) 0 1px, transparent 1px 8px); }
 .bd-aurora .bd-pv { background-image: radial-gradient(60% 80% at 20% 30%, #3fd0b0, transparent), radial-gradient(60% 80% at 80% 20%, #7b5cff, transparent), radial-gradient(70% 80% at 60% 100%, #3a7bff, transparent); }

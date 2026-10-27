@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from 'motion/react'
 import { useStore } from '@/state/store'
-import { useNarrow } from '@/state/hooks'
+import { useNarrow, useToday } from '@/state/hooks'
+import { useCarryOver } from '@/state/carry'
+import { FocusTicker } from '@/components/Focus'
 import type { UpdateStatus } from '@shared/ipc'
 import type { SyncStatus } from '@shared/sync'
 import type { View } from '@/state/store'
@@ -20,9 +22,11 @@ const HabitsView = lazy(() => import('@/views/HabitsView').then(m => ({ default:
 const EventSheet = lazy(() => import('@/sheets/EventSheet').then(m => ({ default: m.EventSheet })))
 const HabitSheet = lazy(() => import('@/sheets/HabitSheet').then(m => ({ default: m.HabitSheet })))
 const SettingsSheet = lazy(() => import('@/sheets/SettingsSheet').then(m => ({ default: m.SettingsSheet })))
+const JournalView = lazy(() => import('@/views/JournalView').then(m => ({ default: m.JournalView })))
+const StatsView = lazy(() => import('@/views/StatsView').then(m => ({ default: m.StatsView })))
 const AccountSheet = lazy(() => import('@/sheets/AccountSheet').then(m => ({ default: m.AccountSheet })))
 
-const VIEW_KEYS: Record<string, View> = { '1': 'month', '2': 'week', '3': 'day', '4': 'habits' }
+const VIEW_KEYS: Record<string, View> = { '1': 'month', '2': 'week', '3': 'day', '4': 'habits', '5': 'journal', '6': 'stats' }
 
 function useShortcuts(): void {
   useEffect(() => {
@@ -103,7 +107,7 @@ function CurrentView() {
         key={view}
         className="view"
         initial={{ opacity: 0, y: 16, scale: 0.985, filter: 'blur(6px)' }}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
+        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transition: { type: 'spring', stiffness: 240, damping: 24 } }}
         exit={{ opacity: 0, scale: 0.99, filter: 'blur(4px)', transition: { duration: 0.16 } }}
       >
         <Suspense fallback={null}>
@@ -112,6 +116,8 @@ function CurrentView() {
           {view === 'week' && <WeekView />}
           {view === 'day' && <DayView />}
           {view === 'habits' && <HabitsView />}
+          {view === 'journal' && <JournalView />}
+          {view === 'stats' && <StatsView />}
         </Suspense>
       </motion.div>
     </AnimatePresence>
@@ -139,6 +145,7 @@ export function App() {
   const sidebar = useStore(s => s.data?.settings.sidebar ?? true) && !narrow
   const settings = useStore(s => s.data?.settings)
   useAppearance(settings)
+  useCarryOver(useToday(), ready, settings?.carryOver ?? false)
   useShortcuts()
   useMainProcessEvents()
   usePhoneLayout(narrow)
@@ -180,6 +187,7 @@ export function App() {
         </div>
         <SheetHost />
         <ToastHost />
+        <FocusTicker />
       </div>
     </MotionConfig>
   )

@@ -193,6 +193,9 @@ export function createWebApi(): MiSemanaApi {
     testNotification: async () => undefined,
     onOpenDate: noop,
     onShortcut: noop,
+    focusProgress: (value, opts) => {
+      document.title = value === null ? 'Mi Semana' : opts?.done ? 'Listo · Mi Semana' : `${opts?.label ?? 'Enfoque'} · Mi Semana`
+    },
     sync: {
       status: async () => status,
       signIn: async (email, password) => {

@@ -10,6 +10,12 @@ export interface BackupPayload {
   habits: Habit[]
   habitLog: HabitLog
   notes: Notes
+  /** Absent in backups made before the journal and productivity features. */
+  journal?: AppData['journal']
+  priorities?: AppData['priorities']
+  inbox?: AppData['inbox']
+  focus?: AppData['focus']
+  reviews?: AppData['reviews']
 }
 
 export interface MergeResult {
@@ -21,8 +27,12 @@ export const BACKUP_APP_ID = 'mi-semana'
 export const WEB_EXPORT_ID = 'mi-semana-web'
 
 export function toBackupFile(data: AppData, now = new Date()): string {
-  const { events, habits, habitLog, notes } = data
-  return JSON.stringify({ app: BACKUP_APP_ID, schema: 1, exportedAt: now.toISOString(), data: { events, habits, habitLog, notes } }, null, 2)
+  const { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews } = data
+  return JSON.stringify(
+    { app: BACKUP_APP_ID, schema: 1, exportedAt: now.toISOString(), data: { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews } },
+    null,
+    2,
+  )
 }
 
 const WEB_INK: Record<string, Ink> = {
@@ -93,7 +103,9 @@ function fromWeb(raw: Record<string, unknown>): BackupPayload {
 const NativeBackup = z.object({
   app: z.literal(BACKUP_APP_ID),
   schema: z.literal(1),
-  data: AppDataSchema.pick({ events: true, habits: true, habitLog: true, notes: true }),
+  data: AppDataSchema.pick({ events: true, habits: true, habitLog: true, notes: true }).extend(
+    AppDataSchema.pick({ journal: true, priorities: true, inbox: true, focus: true, reviews: true }).partial().shape,
+  ),
 })
 
 /** Accepts this app's backups and exports from the web version. Throws with a readable message. */
@@ -145,12 +157,33 @@ export function mergeBackup(base: AppData, inc: BackupPayload, at = Date.now()):
     notes[day] = text
     stamps[`n:${day}`] = at
   }
+  // Journal, priorities, focus and reviews: a day the app already has is kept as it is.
+  const days_ = <T>(field: 'journal' | 'priorities' | 'focus' | 'reviews', kind: string): Record<string, T> => {
+    const map = { ...(base[field] as Record<string, T>) }
+    for (const [day, v] of Object.entries((inc[field] ?? {}) as Record<string, T>)) {
+      if (map[day] !== undefined) continue
+      map[day] = v
+      stamps[`${kind}:${day}`] = at
+    }
+    return map
+  }
+  const journal = days_<AppData['journal'][string]>('journal', 'j')
+  const priorities = days_<AppData['priorities'][string]>('priorities', 'p')
+  const focus = days_<AppData['focus'][string]>('focus', 'f')
+  const reviews = days_<AppData['reviews'][string]>('reviews', 'r')
+  const inboxIds = new Set(base.inbox.map(i => i.id))
+  const newInbox = (inc.inbox ?? []).filter(i => !inboxIds.has(i.id))
+  for (const i of newInbox) stamps[`i:${i.id}`] = at
+
   for (const e of newEvents) stamps[`e:${e.id}`] = at
   for (const h of newHabits) stamps[`h:${h.id}`] = at
   for (const day of Object.keys(habitLog)) if (habitLog[day] !== base.habitLog[day]) stamps[`l:${day}`] = at
 
   return {
-    data: { ...base, events: [...base.events, ...newEvents], habits: [...base.habits, ...newHabits], habitLog, notes, stamps },
+    data: {
+      ...base, events: [...base.events, ...newEvents], habits: [...base.habits, ...newHabits], habitLog, notes,
+      journal, priorities, focus, reviews, inbox: [...base.inbox, ...newInbox], stamps,
+    },
     added: { events: newEvents.length, habits: newHabits.length, days },
   }
 }

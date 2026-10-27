@@ -7,6 +7,7 @@ import { dayProgress } from '@shared/habits'
 import { useStore } from '@/state/store'
 import { useEventIndex, useHolidays, useToday } from '@/state/hooks'
 import { Icon, PriorityMark, cx } from '@/components/primitives'
+import { dropTarget } from '@/components/Inbox'
 import { Timeline } from './Timeline'
 import { slide } from './MonthView'
 
@@ -32,7 +33,7 @@ export function WeekView() {
             const p = d <= today ? dayProgress(habits, log, d) : { done: 0, total: 0 }
             const holiday = holidayOf(d)
             return (
-              <button key={d} type="button" title={holiday} className={cx('wh', 'spot', d === today && 'is-today', d < today && 'is-past', holiday && 'is-holiday')} onClick={() => openDay(d)} style={{ '--i': i } as CSSProperties}>
+              <button key={d} type="button" title={holiday} className={cx('wh', 'spot', d === today && 'is-today', d < today && 'is-past', holiday && 'is-holiday')} onClick={() => openDay(d)} style={{ '--i': i } as CSSProperties} {...dropTarget(d)}>
                 <span className="wh-dn">{DAYS_SHORT[i]}</span>
                 <span className="wh-num">{fromIso(d).getDate()}</span>
                 {holiday && <span className="wh-hol">{Icon.star}<span>{holiday}</span></span>}

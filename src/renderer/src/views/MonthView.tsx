@@ -9,12 +9,13 @@ import { dayProgress } from '@shared/habits'
 import { useStore } from '@/state/store'
 import { useEventIndex, useHolidays, useToday } from '@/state/hooks'
 import { Icon, PriorityMark, cx } from '@/components/primitives'
+import { dropTarget } from '@/components/Inbox'
 
 const MAX_CHIPS = 3
 
 export const slide: Variants = {
   enter: (dir: number) => ({ x: dir * 48, opacity: 0, filter: 'blur(6px)' }),
-  center: { x: 0, opacity: 1, filter: 'blur(0px)', transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
+  center: { x: 0, opacity: 1, filter: 'blur(0px)', transition: { type: 'spring', stiffness: 260, damping: 26 } },
   exit: (dir: number) => ({ x: dir * -32, opacity: 0, filter: 'blur(4px)', transition: { duration: 0.18, ease: [0.4, 0, 1, 1] } }),
 }
 
@@ -35,11 +36,12 @@ const MonthCell = memo(function MonthCell({
   const openSheet = useStore(s => s.openSheet)
   return (
     <div
-      className={cx('cell', 'spot', 'tilt', out && 'is-out', today && 'is-today', past && 'is-past', holiday && 'is-holiday')}
+      className={cx('cell', 'spot', out && 'is-out', today && 'is-today', past && 'is-past', holiday && 'is-holiday')}
       style={{ '--i': i } as CSSProperties}
       role="button"
       tabIndex={0}
       title={holiday}
+      {...dropTarget(iso)}
       aria-label={`${DAYS[(d.getDay() + 6) % 7]} ${d.getDate()} de ${MONTHS[d.getMonth()]}${holiday ? `, festivo: ${holiday}` : ''}: ${events.length} eventos`}
       onClick={() => openDayWithMorph(iso)}
       onKeyDown={e => {

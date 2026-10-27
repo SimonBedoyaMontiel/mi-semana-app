@@ -127,6 +127,7 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
       ...(repeat ? { repeat, exceptions: base?.exceptions, doneDates: base?.doneDates } : {}),
     }
     saveEvent(next, event, scope)
+    if (preset?.inboxId) useStore.getState().dispatch({ type: 'inbox.delete', id: preset.inboxId })
     close()
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { CalendarEvent } from '@shared/model'
@@ -12,6 +12,8 @@ import { newId } from '@/lib/fx'
 import { HabitTile } from '@/components/HabitTile'
 import { Check, PriorityMark, Ring, cx } from '@/components/primitives'
 import { Timeline } from './Timeline'
+import { JournalPanel } from '@/components/Journal'
+import { Priorities } from '@/components/Priorities'
 
 const HINTS = ['9-10:30 Gimnasio #salud', '18:00 Cena con amigos #personal', 'Llamar al banco', '8am-12 Trabajo profundo #trabajo', '16:30 Inglés #estudio']
 
@@ -72,37 +74,6 @@ function QuickAdd({ date }: { date: string }) {
   )
 }
 
-function Notes({ date }: { date: string }) {
-  const stored = useStore(s => s.data!.notes[date] ?? '')
-  const dispatch = useStore(s => s.dispatch)
-  const [text, setText] = useState(stored)
-  const timer = useRef<number>(0)
-  const focused = useRef(false)
-
-  useEffect(() => {
-    if (!focused.current) setText(stored)
-  }, [stored])
-
-  useEffect(() => () => window.clearTimeout(timer.current), [])
-
-  return (
-    <textarea
-      className="notes"
-      value={text}
-      placeholder="Cómo te sentiste, ideas, pendientes…"
-      maxLength={4000}
-      onFocus={() => (focused.current = true)}
-      onBlur={() => (focused.current = false)}
-      onChange={e => {
-        const v = e.target.value
-        setText(v)
-        window.clearTimeout(timer.current)
-        timer.current = window.setTimeout(() => dispatch({ type: 'note.set', date, text: v }), 400)
-      }}
-    />
-  )
-}
-
 export function DayView() {
   const date = useStore(s => s.date)
   const habits = useStore(s => s.data!.habits)
@@ -159,6 +130,7 @@ export function DayView() {
                         <Check on={e.done} size={12} />
                       </button>
                       <button type="button" className="list-text" onClick={() => openSheet({ kind: 'event', event: e })}>{e.text}</button>
+                      {e.from && <span className="from-tag">pendiente</span>}
                       <PriorityMark value={e.priority} />
                     </motion.li>
                   ))}
@@ -169,8 +141,11 @@ export function DayView() {
             )}
           </section>
           <section className="panel">
-            <header className="panel-head"><h3>Notas del día</h3></header>
-            <Notes key={date} date={date} />
+            <Priorities key={date} date={date} />
+          </section>
+          <section className="panel">
+            <header className="panel-head"><h3>Diario del día</h3></header>
+            <JournalPanel key={date} date={date} />
           </section>
         </aside>
       </motion.div>

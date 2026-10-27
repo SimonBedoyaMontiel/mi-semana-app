@@ -1,13 +1,17 @@
 import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { DAYS, MONTHS, fmtDuration, fromIso, pad, toMin, weekday } from '@shared/dates'
+import { DAYS, MONTHS, MONTHS_SHORT, addDays, fmtDuration, fromIso, mondayOf, pad, toIso, toMin, weekday } from '@shared/dates'
 import { evColor } from '@shared/events'
 import { SLOT_ORDER, countOf, dayProgress, isActiveOn } from '@shared/habits'
 import { useStore } from '@/state/store'
 import { useEventIndex, useHolidays, useMinute, useNarrow, useToday } from '@/state/hooks'
 import { toggleEvent } from '@/state/actions'
 import { HabitTile } from './HabitTile'
+import { FocusCard } from './Focus'
+import { Inbox } from './Inbox'
+import { MoodPicker } from './Journal'
+import { Priorities } from './Priorities'
 import { AnimatedNumber, Check, Icon, PriorityMark, Ring, cx } from './primitives'
 
 /** HH:MM with rolling digits; the seconds bar is a pure CSS animation synced once per minute. */
@@ -47,6 +51,7 @@ export function TodayPanel() {
   const log = useStore(s => s.data!.habitLog)
   const openDay = useStore(s => s.openDay)
   const openSheet = useStore(s => s.openSheet)
+  const reviews = useStore(s => s.data!.reviews)
   const events = idx.get(today) ?? []
   const d = fromIso(today)
   const holiday = useHolidays()(today)
@@ -64,6 +69,10 @@ export function TodayPanel() {
   const total = events.length + hp.total
   const done = events.filter(e => e.done).length + hp.done
   const pct = total ? Math.round((done / total) * 100) : 0
+  // Sunday asks to close this week, Monday the one that just ended.
+  const wd = weekday(d)
+  const reviewWeek = wd === 6 ? toIso(mondayOf(d)) : wd === 0 ? toIso(mondayOf(addDays(d, -1))) : null
+  const askReview = !!reviewWeek && !reviews[reviewWeek]
 
   return (
     <aside className="today" aria-label="Hoy">
@@ -86,6 +95,33 @@ export function TodayPanel() {
           <span>{events.length} eventos · {hp.total} hábitos</span>
         </div>
       </div>
+
+      <section className="today-section mood-today">
+        <h3>¿Cómo va tu día?</h3>
+        <MoodPicker date={today} compact />
+      </section>
+
+      <AnimatePresence initial={false}>
+        {askReview && (
+          <motion.button
+            type="button"
+            className="review-card"
+            initial={{ opacity: 0, y: 10, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            whileHover={{ y: -2 }}
+            onClick={() => {
+              useStore.setState({ date: reviewWeek!, dir: 0 })
+              useStore.getState().setView('stats')
+            }}
+          >
+            {Icon.chart}
+            <span><b>Cierra tu semana</b>Mira tu resumen y apunta qué salió bien y qué mejorar.</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <Priorities date={today} />
 
       <AnimatePresence mode="wait" initial={false}>
         {focus && (
@@ -117,14 +153,14 @@ export function TodayPanel() {
         {events.length ? (
           <ul className="agenda">
             <AnimatePresence initial={false}>
-              {events.map(e => (
+              {events.map((e, i) => (
                 <motion.li
                   key={e.id}
                   layout
                   className={cx('agenda-item', e.done && 'is-done', e.start && toMin(e.end) <= nowMin && 'is-past')}
                   style={{ '--c': evColor(e) } as CSSProperties}
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, x: 16, scale: 0.96 }}
+                  animate={{ opacity: 1, x: 0, scale: 1, transition: { type: 'spring', stiffness: 380, damping: 24, delay: i * 0.04 } }}
                   exit={{ opacity: 0, height: 0 }}
                 >
                   <button type="button" className="tick" onClick={ev => toggleEvent(e, ev.currentTarget)} aria-label={e.done ? 'Marcar pendiente' : 'Marcar hecho'}>
@@ -134,6 +170,7 @@ export function TodayPanel() {
                     <time>{e.start || '—'}</time>
                     <span>{e.text}</span>
                   </button>
+                  {e.from && <span className="from-tag" title="Pasó de un día anterior">del {fromIso(e.from).getDate()} {MONTHS_SHORT[fromIso(e.from).getMonth()]}</span>}
                   <PriorityMark value={e.priority} />
                 </motion.li>
               ))}
@@ -144,6 +181,8 @@ export function TodayPanel() {
         )}
       </section>
 
+      <FocusCard />
+
       {active.length > 0 && (
         <section className="today-section">
           <h3>Hábitos de hoy</h3>
@@ -152,6 +191,8 @@ export function TodayPanel() {
           </div>
         </section>
       )}
+
+      <Inbox />
     </aside>
   )
 }

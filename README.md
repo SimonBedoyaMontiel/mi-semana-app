@@ -14,6 +14,12 @@ Agenda de escritorio para Windows: calendario mensual, semana y día con horas d
 | Color y prioridad | En cada evento: un color propio (o el de su categoría) y prioridad alta, media o baja |
 | Repetir ciertos días | Repetir → **Días concretos**, con atajos «Entre semana» y «Fin de semana» |
 | Festivos | Ajustes → General → **Días festivos**: Colombia, España, México, Argentina, Chile, Perú o Estados Unidos |
+| Prioridades del día | En «Hoy» o en el día: hasta tres cosas importantes; cumplirlas todas se celebra |
+| Pendientes | Las tareas sin hora que no hiciste pasan solas a hoy (se puede desactivar en Ajustes) |
+| Bandeja | Apunta tareas sin fecha y arrástralas a un día del mes o de la semana |
+| Modo enfoque | Bloques de 15 a 90 min con cuenta atrás; en el PC se ve en la barra de tareas |
+| Diario | En cada día: ánimo, energía, tres cosas buenas, la pregunta del día y notas. Vista **Diario** (tecla 5) con el año en cuadraditos y buscador |
+| Resumen | Vista **Resumen** (tecla 6): estadísticas de la semana, relación entre hábitos y ánimo, y revisión semanal |
 | Diseño | Icono de paleta o Ajustes → **Diseño**: modo claro u oscuro, seis temas, color de acento y fondos difuminados (o una imagen propia) |
 
 Los datos se guardan en `%APPDATA%\Mi Semana\data\data.json`, con una copia automática por día (se conservan 14) en `backups\`. Desde **Ajustes → Tus datos** puedes exportar o importar una copia, incluido el archivo que genera la versión web (`web/mi-semana-web.html`, botón «Exportar para la app de escritorio»).

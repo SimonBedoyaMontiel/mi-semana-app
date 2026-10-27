@@ -30,6 +30,14 @@ function stamp(data: AppData, key: string, at: number | undefined, deleted = fal
   return { stamps, tombs }
 }
 
+/** Sets or (with null) removes one day's entry of a date-keyed map. */
+function setDay<T>(map: Record<string, T>, date: string, value: T | null): Record<string, T> {
+  const next = { ...map }
+  if (value === null) delete next[date]
+  else next[date] = value
+  return next
+}
+
 const toggleIn = (list: readonly string[] | undefined, value: string, on: boolean): string[] => {
   const set = new Set(list ?? [])
   if (on) set.add(value)
@@ -80,6 +88,21 @@ export function applyCommand(data: AppData, cmd: Command): AppData {
       else delete notes[cmd.date]
       return { ...data, notes, ...stamp(data, `n:${cmd.date}`, cmd.at) }
     }
+    case 'journal.set':
+      return { ...data, journal: setDay(data.journal, cmd.date, cmd.entry), ...stamp(data, `j:${cmd.date}`, cmd.at) }
+    case 'priorities.set':
+      return { ...data, priorities: setDay(data.priorities, cmd.date, cmd.items.length ? cmd.items : null), ...stamp(data, `p:${cmd.date}`, cmd.at) }
+    case 'inbox.upsert':
+      return { ...data, inbox: upsertById(data.inbox, cmd.item), ...stamp(data, `i:${cmd.item.id}`, cmd.at) }
+    case 'inbox.delete':
+      return { ...data, inbox: data.inbox.filter(i => i.id !== cmd.id), ...stamp(data, `i:${cmd.id}`, cmd.at, true) }
+    case 'focus.add': {
+      const day = data.focus[cmd.date] ?? []
+      if (day.some(s => s.id === cmd.session.id)) return data
+      return { ...data, focus: { ...data.focus, [cmd.date]: [...day, cmd.session].slice(-50) }, ...stamp(data, `f:${cmd.date}`, cmd.at) }
+    }
+    case 'review.set':
+      return { ...data, reviews: setDay(data.reviews, cmd.week, cmd.review), ...stamp(data, `r:${cmd.week}`, cmd.at) }
     case 'settings.set': {
       // Only the look and the holiday calendar follow the account; the rest belongs to this device.
       const prefsChanged =

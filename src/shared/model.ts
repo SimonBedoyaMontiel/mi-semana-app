@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  BACKDROPS, CATEGORIES, DEFAULT_SETTINGS, ENERGY, HABIT_KINDS, HEX, HOLIDAY_COUNTRIES, INKS, ISO_DATE, PALETTES, PRIORITIES, REPEAT_FREQS, SLOTS, TIME,
+  ACCOUNT_KINDS, BACKDROPS, FIN_ICONS, CATEGORIES, CURRENCIES, CYCLES, DEFAULT_SETTINGS, ENERGY, FIN_CATS, TX_KINDS, HABIT_KINDS, HEX, HOLIDAY_COUNTRIES, INKS, ISO_DATE, PALETTES, PRIORITIES, REPEAT_FREQS, SLOTS, TIME,
 } from './constants'
 
 export * from './constants'
@@ -98,6 +98,71 @@ export const ReviewSchema = z.object({
   next: z.string().max(1000),
 })
 
+/** Money is kept as integer hundredths of the unit (cents), never as floating point. */
+const cents = z.number().int().min(0).max(1e13)
+const finId = z.string().min(1).max(64)
+
+export const AccountSchema = z.object({
+  id: finId,
+  name: z.string().trim().min(1).max(60),
+  kind: z.enum(ACCOUNT_KINDS),
+  color: z.enum(INKS),
+  icon: z.enum(FIN_ICONS).optional(),
+  /** Balance before the first movement recorded here (credit cards: debt as a negative number). */
+  initial: z.number().int().min(-1e13).max(1e13),
+  createdAt: z.number().int().nonnegative(),
+})
+
+export const TransactionSchema = z.object({
+  id: finId,
+  date: isoDate,
+  kind: z.enum(TX_KINDS),
+  cents,
+  cat: z.enum(FIN_CATS),
+  /** Overrides the category's icon. */
+  icon: z.enum(FIN_ICONS).optional(),
+  accountId: z.string().max(64).optional(),
+  note: z.string().max(200),
+  /** Set when a subscription logged this payment by itself. */
+  subId: z.string().max(64).optional(),
+  createdAt: z.number().int().nonnegative(),
+})
+
+export const SubscriptionSchema = z.object({
+  id: finId,
+  name: z.string().trim().min(1).max(60),
+  cents,
+  cycle: z.enum(CYCLES),
+  /** A payment date; the rest follow from it by the cycle. */
+  anchor: isoDate,
+  accountId: z.string().max(64).optional(),
+  color: z.enum(INKS),
+  /** Without one, the first letter of the name is shown. */
+  icon: z.enum(FIN_ICONS).optional(),
+  /** Days before the payment to warn; -1 for no warning. */
+  remindDays: z.number().int().min(-1).max(14),
+  /** Record each payment as an expense on its day. */
+  autoLog: z.boolean(),
+  active: z.boolean(),
+  /** Last date whose payment was already recorded. */
+  loggedThrough: isoDate.optional(),
+  createdAt: z.number().int().nonnegative(),
+})
+
+export const GoalSchema = z.object({
+  id: finId,
+  name: z.string().trim().min(1).max(60),
+  target: cents,
+  saved: cents,
+  color: z.enum(INKS),
+  icon: z.enum(FIN_ICONS).optional(),
+  deadline: isoDate.optional(),
+  createdAt: z.number().int().nonnegative(),
+})
+
+/** Monthly limit per expense category (cents). */
+export const BudgetsSchema = z.partialRecord(z.enum(FIN_CATS), cents)
+
 export const JournalMapSchema = z.record(isoDate, JournalSchema)
 export const PrioritiesSchema = z.record(isoDate, z.array(TopSchema).max(3))
 export const FocusLogSchema = z.record(isoDate, z.array(FocusSessionSchema).max(50))
@@ -128,10 +193,11 @@ export const SettingsSchema = z.object({
   /** Move undone untimed tasks from past days to today. */
   carryOver: z.boolean(),
   focusMinutes: z.number().int().min(5).max(180),
+  currency: z.enum(CURRENCIES),
 })
 
 /** The part of the settings that follows the account to every device (sync key `s:prefs`). */
-export const PrefsSchema = z.object({ look: LookSchema, holidays: z.enum(HOLIDAY_COUNTRIES) })
+export const PrefsSchema = z.object({ look: LookSchema, holidays: z.enum(HOLIDAY_COUNTRIES), currency: z.enum(CURRENCIES).optional() })
 
 export const AppDataSchema = z.object({
   schema: z.literal(1),
@@ -144,10 +210,16 @@ export const AppDataSchema = z.object({
   inbox: z.array(InboxItemSchema),
   focus: FocusLogSchema,
   reviews: ReviewsSchema,
+  accounts: z.array(AccountSchema),
+  transactions: z.array(TransactionSchema),
+  subscriptions: z.array(SubscriptionSchema),
+  goals: z.array(GoalSchema),
+  budgets: BudgetsSchema,
   settings: SettingsSchema,
   /**
    * Sync bookkeeping: record key → last change (ms). Keys: e:<id> event, h:<id> habit, l:<date> habit log,
-   * n:<date> note, j:<date> journal, p:<date> priorities, f:<date> focus, r:<monday> review, i:<id> inbox, s:prefs.
+   * n:<date> note, j:<date> journal, p:<date> priorities, f:<date> focus, r:<monday> review, i:<id> inbox, s:prefs,
+   * t:<id> transaction, u:<id> subscription, a:<id> account, g:<id> goal, b:budgets.
    */
   stamps: z.record(z.string(), z.number()),
   /** Record key → deletion time (ms), so deletions travel between devices. */
@@ -165,6 +237,14 @@ export type Top = z.infer<typeof TopSchema>
 export type InboxItem = z.infer<typeof InboxItemSchema>
 export type FocusSession = z.infer<typeof FocusSessionSchema>
 export type Review = z.infer<typeof ReviewSchema>
+export type Account = z.infer<typeof AccountSchema>
+export type Transaction = z.infer<typeof TransactionSchema>
+export type Subscription = z.infer<typeof SubscriptionSchema>
+export type Goal = z.infer<typeof GoalSchema>
+export type Budgets = z.infer<typeof BudgetsSchema>
+export type FinCat = (typeof FIN_CATS)[number]
+export type { FinIconName } from './constants'
+export type Currency = (typeof CURRENCIES)[number]
 export type Palette = (typeof PALETTES)[number]
 export type Backdrop = (typeof BACKDROPS)[number]
 export type Country = (typeof HOLIDAY_COUNTRIES)[number]
@@ -189,6 +269,11 @@ export const emptyData = (): AppData => ({
   inbox: [],
   focus: {},
   reviews: {},
+  accounts: [],
+  transactions: [],
+  subscriptions: [],
+  goals: [],
+  budgets: {},
   settings: structuredClone(DEFAULT_SETTINGS),
   stamps: {},
   tombs: {},

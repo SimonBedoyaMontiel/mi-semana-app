@@ -4,8 +4,9 @@ import { AnimatePresence, motion } from 'motion/react'
 import { DAYS_SHORT, fromIso, toIso, weekDates } from '@shared/dates'
 import { evColor } from '@shared/events'
 import { dayProgress } from '@shared/habits'
+import { FinIcon } from '@/components/FinIcon'
 import { useStore } from '@/state/store'
-import { useEventIndex, useHolidays, useToday } from '@/state/hooks'
+import { useEventIndex, useHolidays, useSubsIndex, useToday } from '@/state/hooks'
 import { Icon, PriorityMark, cx } from '@/components/primitives'
 import { dropTarget } from '@/components/Inbox'
 import { Timeline } from './Timeline'
@@ -21,6 +22,7 @@ export function WeekView() {
   const idx = useEventIndex()
   const today = useToday()
   const holidayOf = useHolidays()
+  const subsIdx = useSubsIndex()
   const days = useMemo(() => weekDates(fromIso(date)).map(toIso), [date])
   const key = days[0]!
 
@@ -46,6 +48,11 @@ export function WeekView() {
           <span className="week-allday-label">sin hora</span>
           {days.map(d => (
             <div key={d} className="week-allday">
+              {(subsIdx.get(d) ?? []).map(s => (
+                <button key={s.id} type="button" className="pill-ev pill-sub" style={{ '--c': `var(--${s.color})` } as CSSProperties} onClick={() => openSheet({ kind: 'sub', sub: s })}>
+                  <FinIcon name={s.icon ?? 'tarjeta'} /><span>{s.name}</span>
+                </button>
+              ))}
               {(idx.get(d) ?? []).filter(e => !e.start).map(e => (
                 <button key={e.id} type="button" className={cx('pill-ev', e.done && 'is-done')} style={{ '--c': evColor(e) } as CSSProperties} onClick={() => openSheet({ kind: 'event', event: e })}>
                   <PriorityMark value={e.priority} />

@@ -20,6 +20,8 @@ Agenda de escritorio para Windows: calendario mensual, semana y día con horas d
 | Modo enfoque | Bloques de 15 a 90 min con cuenta atrás; en el PC se ve en la barra de tareas |
 | Diario | En cada día: ánimo, energía, tres cosas buenas, la pregunta del día y notas. Vista **Diario** (tecla 5) con el año en cuadraditos y buscador |
 | Resumen | Vista **Resumen** (tecla 6): estadísticas de la semana, relación entre hábitos y ánimo, y revisión semanal |
+| Finanzas | Vista **Finanzas** (tecla 7): gastos e ingresos con gráficos e iconos animados a elegir (82), presupuesto por categoría, cuentas y tarjetas con su saldo, y metas de ahorro. La moneda se elige en Ajustes → General |
+| Suscripciones | En Finanzas → Suscripciones: el día de cobro aparece en el calendario, avisa antes en el PC y puede registrar el pago como gasto solo |
 | Diseño | Icono de paleta o Ajustes → **Diseño**: modo claro u oscuro, seis temas, color de acento y fondos difuminados (o una imagen propia) |
 
 Los datos se guardan en `%APPDATA%\Mi Semana\data\data.json`, con una copia automática por día (se conservan 14) en `backups\`. Desde **Ajustes → Tus datos** puedes exportar o importar una copia, incluido el archivo que genera la versión web (`web/mi-semana-web.html`, botón «Exportar para la app de escritorio»).

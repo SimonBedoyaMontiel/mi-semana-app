@@ -3,6 +3,7 @@ import { SLOT_LABEL } from './constants'
 import { addDays, fromIso, fromMin, toIso, toMin } from './dates'
 import { isActiveOn, isComplete } from './habits'
 import { expandRange } from './events'
+import { fmtMoney, paymentsBetween } from './money'
 
 export interface Reminder {
   /** Stable identity, so a reminder never fires twice. */
@@ -63,6 +64,25 @@ export function remindersBetween(data: AppData, from: number, to: number): Remin
           body: pending.map(h => (h.dose ? `${h.name} (${h.dose})` : h.name)).join(' · '),
         })
       }
+    }
+  }
+  // Subscriptions: a warning on the morning a few days before each payment.
+  for (const sub of data.subscriptions) {
+    if (!sub.active || sub.remindDays < 0) continue
+    const payFrom = toIso(addDays(fromIso(firstDay), sub.remindDays))
+    const payTo = toIso(addDays(fromIso(lastDay), sub.remindDays))
+    for (const pay of paymentsBetween(sub, payFrom, payTo)) {
+      const day = toIso(addDays(fromIso(pay), -sub.remindDays))
+      const t = at(day, settings.slotTimes.manana)
+      if (!inWindow(t)) continue
+      const when = sub.remindDays === 0 ? 'Se cobra hoy' : sub.remindDays === 1 ? 'Se cobra mañana' : `Se cobra en ${sub.remindDays} días`
+      out.push({
+        key: `u:${sub.id}:${pay}:${sub.remindDays}`,
+        at: t,
+        date: pay,
+        title: `${sub.name}: ${fmtMoney(sub.cents, settings.currency)}`,
+        body: `${when} (${fromIso(pay).getDate()}/${fromIso(pay).getMonth() + 1}).`,
+      })
     }
   }
   return out.sort((a, b) => a.at - b.at)

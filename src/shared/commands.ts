@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  CalendarEventSchema, FocusSessionSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema, ReviewSchema, SettingsSchema, TopSchema,
+  AccountSchema, BudgetsSchema, CalendarEventSchema, FocusSessionSchema, GoalSchema, SubscriptionSchema, TransactionSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema, ReviewSchema, SettingsSchema, TopSchema,
 } from './model'
 
 const id = z.string().min(1).max(64)
@@ -31,6 +31,15 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('focus.add'), date, session: FocusSessionSchema, at }),
   /** `review: null` clears the week's review. */
   z.object({ type: z.literal('review.set'), week: date, review: ReviewSchema.nullable(), at }),
+  z.object({ type: z.literal('tx.upsert'), item: TransactionSchema, at }),
+  z.object({ type: z.literal('tx.delete'), id, at }),
+  z.object({ type: z.literal('sub.upsert'), item: SubscriptionSchema, at }),
+  z.object({ type: z.literal('sub.delete'), id, at }),
+  z.object({ type: z.literal('account.upsert'), item: AccountSchema, at }),
+  z.object({ type: z.literal('account.delete'), id, at }),
+  z.object({ type: z.literal('goal.upsert'), item: GoalSchema, at }),
+  z.object({ type: z.literal('goal.delete'), id, at }),
+  z.object({ type: z.literal('budgets.set'), budgets: BudgetsSchema, at }),
 ])
 
 export type Command = z.infer<typeof CommandSchema>

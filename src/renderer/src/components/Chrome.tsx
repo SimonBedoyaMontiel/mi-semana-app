@@ -15,6 +15,7 @@ const DESKTOP_VIEWS: ReadonlyArray<{ value: View; label: string }> = [
   { value: 'habits', label: 'Hábitos' },
   { value: 'journal', label: 'Diario' },
   { value: 'stats', label: 'Resumen' },
+  { value: 'money', label: 'Finanzas' },
 ]
 const PHONE_VIEWS: ReadonlyArray<{ value: View; label: string }> = [
   { value: 'today', label: 'Hoy' },
@@ -23,6 +24,7 @@ const PHONE_VIEWS: ReadonlyArray<{ value: View; label: string }> = [
   { value: 'habits', label: 'Hábitos' },
   { value: 'journal', label: 'Diario' },
   { value: 'stats', label: 'Resumen' },
+  { value: 'money', label: 'Finanzas' },
 ]
 
 const ago = (t: number): string => {
@@ -128,6 +130,8 @@ function titleFor(view: View, date: string, today: string, eventsInMonth: number
       return { title: 'Diario', eyebrow: `${d.getFullYear()} · tus días por escrito`, inPeriod: d.getFullYear() === t.getFullYear() }
     case 'stats':
       return { title: 'Resumen', eyebrow: `Semana ${isoWeek(d)} · ${weekRangeLabel(d)}`, inPeriod: toIso(mondayOf(d)) === toIso(mondayOf(t)) }
+    case 'money':
+      return { title: capitalize(MONTHS[d.getMonth()]!), eyebrow: `Finanzas · ${d.getFullYear()}`, inPeriod: sameMonth(d, t) }
   }
 }
 
@@ -147,7 +151,7 @@ export function Header() {
   let eventsInMonth = 0
   for (const [d, list] of idx) if (d.startsWith(prefix)) eventsInMonth += list.length
   const { title, eyebrow, inPeriod } = titleFor(view, date, today, eventsInMonth)
-  const newLabel = view === 'habits' ? 'Nuevo hábito' : view === 'journal' ? 'Escribir hoy' : 'Nuevo evento'
+  const newLabel = view === 'habits' ? 'Nuevo hábito' : view === 'journal' ? 'Escribir hoy' : view === 'money' ? 'Nuevo movimiento' : 'Nuevo evento'
 
   return (
     <header className="head">
@@ -179,6 +183,7 @@ export function Header() {
           whileTap={{ scale: 0.94 }}
           onClick={() => {
             if (view === 'journal') useStore.getState().openDay(today)
+            else if (view === 'money') openSheet({ kind: 'tx', preset: { date: inPeriod ? today : `${date.slice(0, 7)}-01` } })
             else openSheet(view === 'habits' ? { kind: 'habit' } : { kind: 'event', preset: { date: view === 'today' || (view === 'month' && inPeriod) ? today : date } })
           }}
           title={`${newLabel} (N)`}

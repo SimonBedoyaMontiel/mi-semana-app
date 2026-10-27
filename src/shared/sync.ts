@@ -8,9 +8,9 @@
  */
 import type { AppData } from './model'
 import {
-  CalendarEventSchema, FocusSessionSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema, PrefsSchema, ReviewSchema, TopSchema,
+  AccountSchema, BudgetsSchema, CalendarEventSchema, FocusSessionSchema, GoalSchema, HabitSchema, SubscriptionSchema, TransactionSchema, ISO_DATE, InboxItemSchema, JournalSchema, PrefsSchema, ReviewSchema, TopSchema,
 } from './model'
-import { PREFS_KEY } from './reducer'
+import { BUDGETS_KEY, PREFS_KEY } from './reducer'
 import { z } from 'zod'
 
 export interface RecordRow {
@@ -37,7 +37,7 @@ export interface SyncState {
  * Bumped whenever a new kind of record is added. An older version skips rows it does not know
  * yet, so after an update the next pull starts again from the beginning to pick them up.
  */
-export const SYNC_KINDS = 3
+export const SYNC_KINDS = 4
 
 export const emptySyncState = (): SyncState => ({ userId: null, cursor: null, pushed: {}, kinds: SYNC_KINDS })
 
@@ -64,6 +64,16 @@ const DAY_MAPS = {
 type DayKind = keyof typeof DAY_MAPS
 const isDayKind = (k: string | undefined): k is DayKind => !!k && k in DAY_MAPS
 
+/** Lists of records with an id; deleting one leaves a tombstone. */
+const ID_LISTS = {
+  t: { field: 'transactions', schema: TransactionSchema },
+  u: { field: 'subscriptions', schema: SubscriptionSchema },
+  a: { field: 'accounts', schema: AccountSchema },
+  g: { field: 'goals', schema: GoalSchema },
+} as const
+type ListKind = keyof typeof ID_LISTS
+const isListKind = (k: string | undefined): k is ListKind => !!k && k in ID_LISTS
+
 export function valueOf(data: AppData, key: string): unknown {
   const id = key.slice(2)
   switch (key[0]) {
@@ -76,10 +86,13 @@ export function valueOf(data: AppData, key: string): unknown {
     case 'n':
       return data.notes[id] ?? ''
     case 's':
-      return key === PREFS_KEY ? { look: data.settings.look, holidays: data.settings.holidays } : undefined
+      return key === PREFS_KEY ? { look: data.settings.look, holidays: data.settings.holidays, currency: data.settings.currency } : undefined
+    case 'b':
+      return key === BUDGETS_KEY ? data.budgets : undefined
     case 'i':
       return data.inbox.find(i => i.id === id)
     default:
+      if (isListKind(key[0])) return (data[ID_LISTS[key[0]].field] as ReadonlyArray<{ id: string }>).find(x => x.id === id)
       return isDayKind(key[0]) ? (data[DAY_MAPS[key[0]].field][id] ?? null) : undefined
   }
 }
@@ -111,6 +124,10 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
   const maps: Pick<AppData, (typeof DAY_MAPS)[DayKind]['field']> = {
     journal: data.journal, priorities: data.priorities, focus: data.focus, reviews: data.reviews,
   }
+  let budgets = data.budgets
+  const lists: Pick<AppData, (typeof ID_LISTS)[ListKind]['field']> = {
+    transactions: data.transactions, subscriptions: data.subscriptions, accounts: data.accounts, goals: data.goals,
+  }
   const stamps = { ...data.stamps }
   const tombs = { ...data.tombs }
   let changed = false
@@ -123,8 +140,11 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
     if (!id) continue
 
     if (row.deleted) {
-      if (kind === 's') continue
-      if (kind === 'i') inbox = inbox.filter(i => i.id !== id)
+      if (kind === 's' || kind === 'b') continue
+      if (isListKind(kind)) {
+        const field = ID_LISTS[kind].field
+        Object.assign(lists, { [field]: (lists[field] as ReadonlyArray<{ id: string }>).filter(x => x.id !== id) })
+      } else if (kind === 'i') inbox = inbox.filter(i => i.id !== id)
       else if (isDayKind(kind)) {
         const field = DAY_MAPS[kind].field
         const next: Record<string, unknown> = { ...maps[field] }
@@ -168,6 +188,17 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
       notes = { ...notes }
       if (p.data.trim()) notes[id] = p.data
       else delete notes[id]
+    } else if (isListKind(kind)) {
+      const { field, schema } = ID_LISTS[kind]
+      const p = schema.safeParse(row.value)
+      if (!p.success || p.data.id !== id) continue
+      const list = lists[field] as ReadonlyArray<{ id: string }>
+      const i = list.findIndex(x => x.id === id)
+      Object.assign(lists, { [field]: i >= 0 ? list.map((x, j) => (j === i ? p.data : x)) : [...list, p.data] })
+    } else if (row.key === BUDGETS_KEY) {
+      const p = BudgetsSchema.safeParse(row.value)
+      if (!p.success) continue
+      budgets = p.data
     } else if (kind === 'i') {
       const p = InboxItemSchema.safeParse(row.value)
       if (!p.success || p.data.id !== id) continue
@@ -188,7 +219,8 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
     } else if (row.key === PREFS_KEY) {
       const p = PrefsSchema.safeParse(row.value)
       if (!p.success) continue
-      settings = { ...settings, ...p.data }
+      const { currency, ...rest } = p.data
+      settings = { ...settings, ...rest, ...(currency ? { currency } : {}) }
     } else continue
 
     delete tombs[row.key]
@@ -196,7 +228,7 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
     changed = true
   }
 
-  return changed ? { data: { ...data, events, habits, habitLog, notes, ...maps, inbox, settings, stamps, tombs }, changed } : { data, changed }
+  return changed ? { data: { ...data, events, habits, habitLog, notes, ...maps, ...lists, budgets, inbox, settings, stamps, tombs }, changed } : { data, changed }
 }
 
 /** Stamps every record that has none (data created before sync existed), so it gets uploaded. */
@@ -214,6 +246,10 @@ export function ensureStamps(data: AppData, at = 1): AppData {
   for (const d of Object.keys(data.habitLog)) need(`l:${d}`)
   for (const d of Object.keys(data.notes)) need(`n:${d}`)
   for (const i of data.inbox) need(`i:${i.id}`)
+  for (const kind of Object.keys(ID_LISTS) as ListKind[]) {
+    for (const x of data[ID_LISTS[kind].field] as ReadonlyArray<{ id: string }>) need(`${kind}:${x.id}`)
+  }
+  if (Object.keys(data.budgets).length) need(BUDGETS_KEY)
   for (const kind of Object.keys(DAY_MAPS) as DayKind[]) {
     for (const d of Object.keys(data[DAY_MAPS[kind].field])) need(`${kind}:${d}`)
   }

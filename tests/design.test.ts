@@ -83,7 +83,7 @@ describe('design settings', () => {
     const look = { ...data.settings.look, palette: 'bosque' as const, accent: '#123abc' }
     data = applyCommand(data, { type: 'settings.set', settings: { ...data.settings, look, holidays: 'MX' }, at: 200 })
     const row = pendingRows(data, emptySyncState()).find(r => r.key === PREFS_KEY)
-    expect(row?.value).toEqual({ look, holidays: 'MX' })
+    expect(row?.value).toEqual({ look, holidays: 'MX', currency: 'COP' })
 
     const other = applyRemote(emptyData(), [{ ...row!, updated_at: 200 }])
     expect(other.data.settings.look.palette).toBe('bosque')

@@ -16,6 +16,11 @@ export interface BackupPayload {
   inbox?: AppData['inbox']
   focus?: AppData['focus']
   reviews?: AppData['reviews']
+  accounts?: AppData['accounts']
+  transactions?: AppData['transactions']
+  subscriptions?: AppData['subscriptions']
+  goals?: AppData['goals']
+  budgets?: AppData['budgets']
 }
 
 export interface MergeResult {
@@ -27,9 +32,12 @@ export const BACKUP_APP_ID = 'mi-semana'
 export const WEB_EXPORT_ID = 'mi-semana-web'
 
 export function toBackupFile(data: AppData, now = new Date()): string {
-  const { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews } = data
+  const { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews, accounts, transactions, subscriptions, goals, budgets } = data
   return JSON.stringify(
-    { app: BACKUP_APP_ID, schema: 1, exportedAt: now.toISOString(), data: { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews } },
+    {
+      app: BACKUP_APP_ID, schema: 1, exportedAt: now.toISOString(),
+      data: { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews, accounts, transactions, subscriptions, goals, budgets },
+    },
     null,
     2,
   )
@@ -104,7 +112,10 @@ const NativeBackup = z.object({
   app: z.literal(BACKUP_APP_ID),
   schema: z.literal(1),
   data: AppDataSchema.pick({ events: true, habits: true, habitLog: true, notes: true }).extend(
-    AppDataSchema.pick({ journal: true, priorities: true, inbox: true, focus: true, reviews: true }).partial().shape,
+    AppDataSchema.pick({
+      journal: true, priorities: true, inbox: true, focus: true, reviews: true,
+      accounts: true, transactions: true, subscriptions: true, goals: true, budgets: true,
+    }).partial().shape,
   ),
 })
 
@@ -174,6 +185,19 @@ export function mergeBackup(base: AppData, inc: BackupPayload, at = Date.now()):
   const inboxIds = new Set(base.inbox.map(i => i.id))
   const newInbox = (inc.inbox ?? []).filter(i => !inboxIds.has(i.id))
   for (const i of newInbox) stamps[`i:${i.id}`] = at
+  // Finance lists: only records the app does not have yet.
+  const addNew = <T extends { id: string }>(have: readonly T[], inc: readonly T[] | undefined, kind: string): T[] => {
+    const ids = new Set(have.map(x => x.id))
+    const fresh = (inc ?? []).filter(x => !ids.has(x.id))
+    for (const x of fresh) stamps[`${kind}:${x.id}`] = at
+    return [...have, ...fresh]
+  }
+  const accounts = addNew(base.accounts, inc.accounts, 'a')
+  const transactions = addNew(base.transactions, inc.transactions, 't')
+  const subscriptions = addNew(base.subscriptions, inc.subscriptions, 'u')
+  const goals = addNew(base.goals, inc.goals, 'g')
+  const budgets = Object.keys(base.budgets).length || !inc.budgets ? base.budgets : inc.budgets
+  if (budgets !== base.budgets) stamps['b:budgets'] = at
 
   for (const e of newEvents) stamps[`e:${e.id}`] = at
   for (const h of newHabits) stamps[`h:${h.id}`] = at
@@ -182,7 +206,7 @@ export function mergeBackup(base: AppData, inc: BackupPayload, at = Date.now()):
   return {
     data: {
       ...base, events: [...base.events, ...newEvents], habits: [...base.habits, ...newHabits], habitLog, notes,
-      journal, priorities, focus, reviews, inbox: [...base.inbox, ...newInbox], stamps,
+      journal, priorities, focus, reviews, inbox: [...base.inbox, ...newInbox], accounts, transactions, subscriptions, goals, budgets, stamps,
     },
     added: { events: newEvents.length, habits: newHabits.length, days },
   }

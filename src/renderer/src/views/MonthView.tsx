@@ -6,8 +6,11 @@ import type { CalendarEvent } from '@shared/model'
 import { DAYS, DAYS_SHORT, MONTHS, fromIso, monthMatrix, toIso } from '@shared/dates'
 import { evColor } from '@shared/events'
 import { dayProgress } from '@shared/habits'
+import { FinIcon } from '@/components/FinIcon'
 import { useStore } from '@/state/store'
-import { useEventIndex, useHolidays, useToday } from '@/state/hooks'
+import { useCurrency, useEventIndex, useHolidays, useSubsIndex, useToday } from '@/state/hooks'
+import type { Subscription } from '@shared/model'
+import { fmtMoney } from '@shared/money'
 import { Icon, PriorityMark, cx } from '@/components/primitives'
 import { dropTarget } from '@/components/Inbox'
 
@@ -27,10 +30,11 @@ export function openDayWithMorph(date: string): void {
 }
 
 const MonthCell = memo(function MonthCell({
-  iso, i, out, today, past, events, done, total, morph, holiday,
+  iso, i, out, today, past, events, done, total, morph, holiday, subs, currency,
 }: {
   iso: string; i: number; out: boolean; today: boolean; past: boolean
   events: readonly CalendarEvent[]; done: number; total: number; morph: boolean; holiday?: string
+  subs: readonly Subscription[]; currency: string
 }) {
   const d = fromIso(iso)
   const openSheet = useStore(s => s.openSheet)
@@ -78,6 +82,11 @@ const MonthCell = memo(function MonthCell({
           </li>
         ))}
         {events.length > MAX_CHIPS && <li className="cell-more">+{events.length - MAX_CHIPS}</li>}
+        {subs.map(s => (
+          <li key={s.id} className="cell-sub" style={{ '--c': `var(--${s.color})` } as CSSProperties} title={`${s.name}: ${fmtMoney(s.cents, currency)}`}>
+            <FinIcon name={s.icon ?? 'tarjeta'} /><span>{s.name}</span>
+          </li>
+        ))}
       </ul>
       {total > 0 && (
         <div className={cx('cell-meter', done === total && 'is-full')} title={`Hábitos ${done}/${total}`}>
@@ -97,6 +106,8 @@ export function MonthView() {
   const idx = useEventIndex()
   const today = useToday()
   const holidayOf = useHolidays()
+  const subsIdx = useSubsIndex()
+  const currency = useCurrency()
   const monthKey = date.slice(0, 7)
   const cells = useMemo(() => monthMatrix(fromIso(`${monthKey}-01`)).map(toIso), [monthKey])
 
@@ -131,6 +142,8 @@ export function MonthView() {
                 total={p.total}
                 morph={morph === iso}
                 holiday={holidayOf(iso)}
+                subs={subsIdx.get(iso) ?? NO_SUBS}
+                currency={currency}
               />
             )
           })}
@@ -141,3 +154,4 @@ export function MonthView() {
 }
 
 const EMPTY: readonly CalendarEvent[] = []
+const NO_SUBS: readonly Subscription[] = []

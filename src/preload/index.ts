@@ -23,6 +23,7 @@ const api: MiSemanaApi = {
   testNotification: () => ipcRenderer.invoke(IPC.testNotification),
   onOpenDate: cb => subscribe<string>(IPC.openDate, cb),
   onShortcut: cb => subscribe<ShortcutAction>(IPC.shortcut, cb),
+  focusProgress: (value, opts) => void ipcRenderer.invoke(IPC.focusProgress, value, !!opts?.done),
   sync: {
     status: () => ipcRenderer.invoke(IPC.syncStatus),
     signIn: (email, password) => ipcRenderer.invoke(IPC.syncSignIn, email, password),

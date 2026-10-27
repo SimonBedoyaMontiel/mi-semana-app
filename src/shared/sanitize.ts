@@ -1,5 +1,9 @@
+import type { z } from 'zod'
 import type { AppData } from './model'
-import { CalendarEventSchema, DEFAULT_SETTINGS, HabitLogSchema, HabitSchema, LookSchema, NotesSchema, SettingsSchema } from './model'
+import {
+  CalendarEventSchema, DEFAULT_SETTINGS, FocusSessionSchema, HabitLogSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema,
+  LookSchema, NotesSchema, ReviewSchema, SettingsSchema, TopSchema,
+} from './model'
 import { ensureStamps } from './sync'
 
 /** Lenient load: one bad row never costs the whole file. New settings fields get defaults. */
@@ -11,6 +15,14 @@ export function sanitize(raw: unknown): AppData {
       const p = parse(v)
       return p.success ? [p.data as T] : []
     })
+  /** Date-keyed map: each day is checked on its own. */
+  const keepDays = <S extends z.ZodType>(map: unknown, schema: S): Record<string, z.infer<S>> =>
+    Object.fromEntries(
+      Object.entries(map && typeof map === 'object' && !Array.isArray(map) ? map : {}).flatMap(([day, v]) => {
+        const p = schema.safeParse(v)
+        return ISO_DATE.test(day) && p.success ? [[day, p.data]] : []
+      }),
+    )
   const s = (r.settings ?? {}) as Record<string, unknown>
   const look = LookSchema.safeParse({ ...DEFAULT_SETTINGS.look, ...((s.look as object) ?? {}) })
   const settings = SettingsSchema.safeParse({
@@ -29,6 +41,11 @@ export function sanitize(raw: unknown): AppData {
     habits: keep(r.habits, v => HabitSchema.safeParse(v)),
     habitLog: habitLog.success ? habitLog.data : {},
     notes: notes.success ? notes.data : {},
+    journal: keepDays(r.journal, JournalSchema),
+    priorities: keepDays(r.priorities, TopSchema.array().max(3)),
+    inbox: keep(r.inbox, v => InboxItemSchema.safeParse(v)),
+    focus: keepDays(r.focus, FocusSessionSchema.array().max(50)),
+    reviews: keepDays(r.reviews, ReviewSchema),
     settings: settings.success ? settings.data : structuredClone(DEFAULT_SETTINGS),
     stamps: times(r.stamps),
     tombs: times(r.tombs),

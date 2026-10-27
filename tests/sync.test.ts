@@ -4,7 +4,7 @@ import { applyCommand } from '@shared/reducer'
 import type { Command } from '@shared/commands'
 import { emptyData } from '@shared/model'
 import type { AppData, CalendarEvent } from '@shared/model'
-import { SyncEngine, applyRemote, emptySyncState, ensureStamps, pendingRows } from '@shared/sync'
+import { SYNC_KINDS, SyncEngine, applyRemote, emptySyncState, ensureStamps, pendingRows } from '@shared/sync'
 import type { RecordRow, SyncState, SyncTransport } from '@shared/sync'
 import { remindersBetween } from '@shared/reminders'
 
@@ -166,9 +166,9 @@ describe('sync engine', () => {
 describe('account switching', () => {
   it('adopts never-synced data and clears data owned by another account', async () => {
     const { adoptAccount } = await import('@shared/sync')
-    expect(adoptAccount(emptySyncState(), 'a')).toEqual({ state: { userId: 'a', cursor: null, pushed: {} }, clearLocal: false })
+    expect(adoptAccount(emptySyncState(), 'a')).toEqual({ state: { userId: 'a', cursor: null, pushed: {}, kinds: SYNC_KINDS }, clearLocal: false })
     const owned = { userId: 'a', cursor: 'x', pushed: { 'e:1': 5 } }
     expect(adoptAccount(owned, 'a')).toEqual({ state: owned, clearLocal: false })
-    expect(adoptAccount(owned, 'b')).toEqual({ state: { userId: 'b', cursor: null, pushed: {} }, clearLocal: true })
+    expect(adoptAccount(owned, 'b')).toEqual({ state: { userId: 'b', cursor: null, pushed: {}, kinds: SYNC_KINDS }, clearLocal: true })
   })
 })

@@ -2,7 +2,7 @@
  * Plain values shared by every process. Kept free of zod so the renderer bundle never pulls the
  * validation library — validation lives in the main process (see model.ts / commands.ts).
  */
-import type { Category, Ink, Priority, Settings, Slot } from './model'
+import type { Category, Energy, Ink, Priority, Settings, Slot } from './model'
 
 export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 export const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -13,6 +13,12 @@ export const SLOTS = ['manana', 'mediodia', 'tarde', 'noche', 'cualquiera'] as c
 export const HABIT_KINDS = ['habito', 'suplemento'] as const
 export const REPEAT_FREQS = ['daily', 'weekly', 'monthly'] as const
 export const PRIORITIES = ['alta', 'media', 'baja'] as const
+export const ENERGY = ['baja', 'media', 'alta'] as const
+/** Mood scale for the journal: 1 (very bad) … 5 (very good). */
+export const MOODS = [1, 2, 3, 4, 5] as const
+export const FOCUS_CHOICES = [15, 25, 45, 60, 90] as const
+/** Pending untimed tasks older than this are left where they are instead of being carried. */
+export const CARRY_DAYS = 14
 
 /** Complete looks: surfaces, text and a default accent, each with a light and a dark variant. */
 export const PALETTES = ['grafito', 'papel', 'bosque', 'oceano', 'ciruela', 'medianoche'] as const
@@ -37,6 +43,8 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebar: true,
   look: { palette: 'grafito', accent: '', backdrop: 'none', glow: 60, moving: true },
   holidays: 'CO',
+  carryOver: true,
+  focusMinutes: 25,
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -70,6 +78,38 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
   media: 'Media',
   baja: 'Baja',
 }
+
+export const MOOD_LABEL: Record<(typeof MOODS)[number], string> = {
+  1: 'Muy mal',
+  2: 'Mal',
+  3: 'Normal',
+  4: 'Bien',
+  5: 'Muy bien',
+}
+
+export const ENERGY_LABEL: Record<Energy, string> = {
+  baja: 'Baja',
+  media: 'Media',
+  alta: 'Alta',
+}
+
+/** One question per day, chosen from the date so every device asks the same one. */
+export const JOURNAL_PROMPTS = [
+  '¿Qué aprendiste hoy?',
+  '¿Qué te dio energía hoy?',
+  '¿Qué harías distinto si repitieras el día?',
+  '¿De qué te sientes orgulloso hoy?',
+  '¿Qué te preocupa y qué puedes hacer al respecto?',
+  '¿A quién te gustaría agradecer algo?',
+  '¿Qué pequeño avance hiciste hoy?',
+  '¿Qué te hizo reír o sonreír?',
+  '¿Qué quieres que salga bien mañana?',
+  '¿En qué perdiste tiempo y cómo lo evitarías?',
+  '¿Qué decisión tomaste hoy y por qué?',
+  '¿Qué hábito te costó más hoy?',
+  '¿Qué momento del día quieres recordar?',
+  '¿Qué necesitas soltar esta noche?',
+] as const
 
 export const PALETTE_LABEL: Record<(typeof PALETTES)[number], string> = {
   grafito: 'Grafito',

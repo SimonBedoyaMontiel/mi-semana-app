@@ -23,6 +23,7 @@ export const IPC = {
   syncNow: 'sync:now',
   updateStatus: 'update:status',
   updateInstall: 'update:install',
+  focusProgress: 'focus:progress',
 } as const
 
 export interface ImportOutcome {
@@ -58,6 +59,11 @@ export interface MiSemanaApi {
   testNotification(): Promise<void>
   onOpenDate(cb: (date: string) => void): () => void
   onShortcut(cb: (action: ShortcutAction) => void): () => void
+  /**
+   * Focus timer progress, 0–1, shown outside the page (the taskbar button on desktop, the tab
+   * title on the web). `done` marks the end of a block; `null` clears it.
+   */
+  focusProgress(value: number | null, opts?: { done?: boolean; label?: string }): void
   sync: {
     status(): Promise<SyncStatus>
     signIn(email: string, password: string): Promise<void>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Backdrop, Country, Look, Palette, Settings } from '@shared/model'
-import { ACCENTS, BACKDROPS, BACKDROP_LABEL, COUNTRY_LABEL, HEX, HOLIDAY_COUNTRIES, PALETTES, PALETTE_LABEL } from '@shared/constants'
+import { ACCENTS, BACKDROPS, FOCUS_CHOICES, BACKDROP_LABEL, COUNTRY_LABEL, HEX, HOLIDAY_COUNTRIES, PALETTES, PALETTE_LABEL } from '@shared/constants'
 import { holidaysOf } from '@shared/holidays'
 import { MONTHS_SHORT, fromIso, todayIso } from '@shared/dates'
 import type { AppInfo } from '@shared/ipc'
@@ -335,6 +335,16 @@ export function SettingsSheet({ tab: initialTab }: { tab?: SettingsTab }) {
                   </select>
                 </label>
                 <NextHolidays country={settings.holidays} />
+              </section>
+              <section>
+                <h3>Productividad</h3>
+                <Switch label="Pasar a hoy las tareas sin hora que quedaron pendientes" on={settings.carryOver} onChange={carryOver => set({ carryOver })} />
+                <label className="field inline">
+                  <span>Duración del bloque de enfoque</span>
+                  <select value={settings.focusMinutes} onChange={e => set({ focusMinutes: Number(e.target.value) })}>
+                    {FOCUS_CHOICES.map(m => <option key={m} value={m}>{m} min</option>)}
+                  </select>
+                </label>
               </section>
               {desktop && (
                 <section>

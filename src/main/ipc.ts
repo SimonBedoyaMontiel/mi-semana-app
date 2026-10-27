@@ -102,6 +102,18 @@ export function registerIpc({ repo, reminders, sync, updater, getWindow, quit }:
   ipcMain.handle(IPC.syncUpdatePassword, guard((_e, password: unknown) => sync.updatePassword(str(password, 200))))
   ipcMain.handle(IPC.syncNow, guard(() => sync.run()))
 
+  ipcMain.handle(
+    IPC.focusProgress,
+    guard((_e, value: unknown, done: unknown) => {
+      const win = getWindow()
+      if (!win) return
+      const v = typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : -1
+      win.setProgressBar(v)
+      // The block ended while the window was in the background: make the taskbar button blink.
+      if (done === true && !win.isFocused()) win.flashFrame(true)
+    }),
+  )
+
   ipcMain.handle(IPC.updateStatus, guard(() => updater.current))
   ipcMain.handle(
     IPC.updateInstall,

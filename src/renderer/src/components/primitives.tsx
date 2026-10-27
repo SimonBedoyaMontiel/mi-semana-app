@@ -6,9 +6,9 @@ import { PRIORITY_LABEL } from '@shared/constants'
 
 export const cx = (...c: Array<string | false | null | undefined>): string => c.filter(Boolean).join(' ')
 
-/** Critically damped: fast, no overshoot. Motion should feel precise, not bouncy. */
-export const SPRING = { type: 'spring', stiffness: 520, damping: 46, mass: 0.9 } as const
-export const SOFT = { type: 'spring', stiffness: 170, damping: 28 } as const
+/** Quick with a small overshoot: things land with a little life instead of stopping dead. */
+export const SPRING = { type: 'spring', stiffness: 460, damping: 30, mass: 0.85 } as const
+export const SOFT = { type: 'spring', stiffness: 160, damping: 20 } as const
 export const EASE = [0.22, 1, 0.36, 1] as const
 
 export function Ring({
@@ -127,7 +127,12 @@ export const Icon = {
   plus: <svg viewBox="0 0 24 24" className="ico ico-plus" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>,
   left: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>,
   right: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>,
-  gear: <svg viewBox="0 0 24 24" className="ico ico-gear" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5" /></svg>,
+  gear: (
+    <svg viewBox="0 0 24 24" className="ico ico-gear" aria-hidden="true">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
   panel: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><path d="M14.5 4.5v15" /></svg>,
   close: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>,
   pen: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" /></svg>,
@@ -147,6 +152,11 @@ export const Icon = {
   sliders: <svg viewBox="0 0 24 24" className="ico ico-sliders" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle className="sk sk1" cx="15" cy="7" r="2" /><circle className="sk sk2" cx="9" cy="17" r="2" /></svg>,
   database: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.8" /><path d="M5 6v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6M5 12v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-6" /></svg>,
   user: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>,
+  play: <svg viewBox="0 0 24 24" className="ico ico-fill ico-play" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>,
+  calendar: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>,
+  book: <svg viewBox="0 0 24 24" className="ico ico-book" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" /><path className="bk-line" d="M8.5 8h7M8.5 11.5h5" /></svg>,
+  chart: <svg viewBox="0 0 24 24" className="ico ico-chart" aria-hidden="true"><path d="M4 20h16" /><path className="bar b1" d="M7 20v-6" /><path className="bar b2" d="M12 20V8" /><path className="bar b3" d="M17 20v-9" /></svg>,
+  search: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>,
 }
 
 /**

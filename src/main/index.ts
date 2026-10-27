@@ -106,7 +106,10 @@ if (!app.requestSingleInstanceLock()) {
 
     registerIpc({ repo, reminders, sync, updater, getWindow: () => win, quit: () => (quitting = true) })
     reminders.start()
-    win.on('focus', () => sync.schedule(800))
+    win.on('focus', () => {
+      win?.flashFrame(false)
+      sync.schedule(800)
+    })
     void sync.init().then(() => {
       const url = protocolUrl(process.argv)
       if (url) void sync.completeBrowserSignIn(url)

@@ -81,14 +81,12 @@ export function celebrate(): void {
 /**
  * Pointer effects, delegated from one listener for the whole app:
  * - `.spot`: a soft light follows the cursor (sets --mx / --my).
- * - `.tilt`: the element leans a few degrees toward the cursor (sets --rx / --ry).
  * - `.magnet`: the element drifts a few pixels toward the cursor (sets --tx / --ty).
  * Only on devices with a real hover; nothing at all when reduced motion is asked for.
  */
 export function installPointerFx(): () => void {
   if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return () => undefined
   let spot: HTMLElement | null = null
-  let tilt: HTMLElement | null = null
   let magnet: HTMLElement | null = null
   let frame = 0
   let last: PointerEvent | null = null
@@ -112,17 +110,6 @@ export function installPointerFx(): () => void {
       s.style.setProperty('--my', `${e.clientY - r.top}px`)
     }
 
-    const t = target?.closest<HTMLElement>('.tilt') ?? null
-    if (t !== tilt) reset(tilt, ['--rx', '--ry'])
-    tilt = t
-    if (t) {
-      const r = t.getBoundingClientRect()
-      const px = (e.clientX - r.left) / r.width - 0.5
-      const py = (e.clientY - r.top) / r.height - 0.5
-      t.style.setProperty('--rx', `${(-py * 7).toFixed(2)}deg`)
-      t.style.setProperty('--ry', `${(px * 7).toFixed(2)}deg`)
-    }
-
     const m = target?.closest<HTMLElement>('.magnet') ?? null
     if (m !== magnet) reset(magnet, ['--tx', '--ty'])
     magnet = m
@@ -139,9 +126,8 @@ export function installPointerFx(): () => void {
   }
   const onLeave = (): void => {
     reset(spot, ['--mx', '--my'])
-    reset(tilt, ['--rx', '--ry'])
     reset(magnet, ['--tx', '--ty'])
-    spot = tilt = magnet = null
+    spot = magnet = null
   }
   document.addEventListener('pointermove', onMove, { passive: true })
   document.documentElement.addEventListener('pointerleave', onLeave)

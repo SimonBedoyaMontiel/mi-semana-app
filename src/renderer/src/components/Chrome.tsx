@@ -13,12 +13,16 @@ const DESKTOP_VIEWS: ReadonlyArray<{ value: View; label: string }> = [
   { value: 'week', label: 'Semana' },
   { value: 'day', label: 'Día' },
   { value: 'habits', label: 'Hábitos' },
+  { value: 'journal', label: 'Diario' },
+  { value: 'stats', label: 'Resumen' },
 ]
 const PHONE_VIEWS: ReadonlyArray<{ value: View; label: string }> = [
   { value: 'today', label: 'Hoy' },
   { value: 'month', label: 'Mes' },
   { value: 'week', label: 'Semana' },
   { value: 'habits', label: 'Hábitos' },
+  { value: 'journal', label: 'Diario' },
+  { value: 'stats', label: 'Resumen' },
 ]
 
 const ago = (t: number): string => {
@@ -120,6 +124,10 @@ function titleFor(view: View, date: string, today: string, eventsInMonth: number
       return { title: `${DAYS[weekday(d)]} ${d.getDate()}`, eyebrow: `${capitalize(MONTHS[d.getMonth()]!)} ${d.getFullYear()}${date === today ? ' · Hoy' : ''}`, inPeriod: date === today }
     case 'habits':
       return { title: 'Hábitos', eyebrow: `Semana ${isoWeek(d)} · ${weekRangeLabel(d)}`, inPeriod: toIso(mondayOf(d)) === toIso(mondayOf(t)) }
+    case 'journal':
+      return { title: 'Diario', eyebrow: `${d.getFullYear()} · tus días por escrito`, inPeriod: d.getFullYear() === t.getFullYear() }
+    case 'stats':
+      return { title: 'Resumen', eyebrow: `Semana ${isoWeek(d)} · ${weekRangeLabel(d)}`, inPeriod: toIso(mondayOf(d)) === toIso(mondayOf(t)) }
   }
 }
 
@@ -139,7 +147,7 @@ export function Header() {
   let eventsInMonth = 0
   for (const [d, list] of idx) if (d.startsWith(prefix)) eventsInMonth += list.length
   const { title, eyebrow, inPeriod } = titleFor(view, date, today, eventsInMonth)
-  const newLabel = view === 'habits' ? 'Nuevo hábito' : 'Nuevo evento'
+  const newLabel = view === 'habits' ? 'Nuevo hábito' : view === 'journal' ? 'Escribir hoy' : 'Nuevo evento'
 
   return (
     <header className="head">
@@ -169,11 +177,14 @@ export function Header() {
           type="button"
           className={cx('btn', 'primary', 'magnet', narrow && 'fab')}
           whileTap={{ scale: 0.94 }}
-          onClick={() => openSheet(view === 'habits' ? { kind: 'habit' } : { kind: 'event', preset: { date: view === 'today' || (view === 'month' && inPeriod) ? today : date } })}
+          onClick={() => {
+            if (view === 'journal') useStore.getState().openDay(today)
+            else openSheet(view === 'habits' ? { kind: 'habit' } : { kind: 'event', preset: { date: view === 'today' || (view === 'month' && inPeriod) ? today : date } })
+          }}
           title={`${newLabel} (N)`}
           aria-label={newLabel}
         >
-          {Icon.plus}
+          {view === 'journal' ? Icon.book : Icon.plus}
           <AnimatePresence initial={false}>{!narrow && <span>{newLabel}</span>}</AnimatePresence>
         </motion.button>
       </div>

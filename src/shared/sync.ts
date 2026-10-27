@@ -7,7 +7,9 @@
  * than what it has, so devices converge whatever order they sync in.
  */
 import type { AppData } from './model'
-import { CalendarEventSchema, HabitSchema, ISO_DATE, PrefsSchema } from './model'
+import {
+  CalendarEventSchema, FocusSessionSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema, PrefsSchema, ReviewSchema, TopSchema,
+} from './model'
 import { PREFS_KEY } from './reducer'
 import { z } from 'zod'
 
@@ -27,9 +29,17 @@ export interface SyncState {
   cursor: string | null
   /** Stamp last confirmed on the server for each key, so nothing is pushed twice. */
   pushed: Record<string, number>
+  /** Record kinds this copy understood when it last pulled; see SYNC_KINDS. */
+  kinds?: number
 }
 
-export const emptySyncState = (): SyncState => ({ userId: null, cursor: null, pushed: {} })
+/**
+ * Bumped whenever a new kind of record is added. An older version skips rows it does not know
+ * yet, so after an update the next pull starts again from the beginning to pick them up.
+ */
+export const SYNC_KINDS = 3
+
+export const emptySyncState = (): SyncState => ({ userId: null, cursor: null, pushed: {}, kinds: SYNC_KINDS })
 
 /**
  * Decides what happens to local data when `userId` signs in. Data synced with another account
@@ -44,6 +54,16 @@ export function adoptAccount(state: SyncState, userId: string): { state: SyncSta
 const DayLog = z.record(z.string(), z.number().int().min(1).max(99))
 const Note = z.string().max(4000)
 
+/** Date-keyed records that live in a map of AppData; an empty or null value removes the day. */
+const DAY_MAPS = {
+  j: { field: 'journal', schema: JournalSchema },
+  p: { field: 'priorities', schema: TopSchema.array().max(3) },
+  f: { field: 'focus', schema: FocusSessionSchema.array().max(50) },
+  r: { field: 'reviews', schema: ReviewSchema },
+} as const
+type DayKind = keyof typeof DAY_MAPS
+const isDayKind = (k: string | undefined): k is DayKind => !!k && k in DAY_MAPS
+
 export function valueOf(data: AppData, key: string): unknown {
   const id = key.slice(2)
   switch (key[0]) {
@@ -57,8 +77,10 @@ export function valueOf(data: AppData, key: string): unknown {
       return data.notes[id] ?? ''
     case 's':
       return key === PREFS_KEY ? { look: data.settings.look, holidays: data.settings.holidays } : undefined
+    case 'i':
+      return data.inbox.find(i => i.id === id)
     default:
-      return undefined
+      return isDayKind(key[0]) ? (data[DAY_MAPS[key[0]].field][id] ?? null) : undefined
   }
 }
 
@@ -85,6 +107,10 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
   let habitLog = data.habitLog
   let notes = data.notes
   let settings = data.settings
+  let inbox = data.inbox
+  const maps: Pick<AppData, (typeof DAY_MAPS)[DayKind]['field']> = {
+    journal: data.journal, priorities: data.priorities, focus: data.focus, reviews: data.reviews,
+  }
   const stamps = { ...data.stamps }
   const tombs = { ...data.tombs }
   let changed = false
@@ -98,7 +124,13 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
 
     if (row.deleted) {
       if (kind === 's') continue
-      if (kind === 'e') events = events.filter(e => e.id !== id)
+      if (kind === 'i') inbox = inbox.filter(i => i.id !== id)
+      else if (isDayKind(kind)) {
+        const field = DAY_MAPS[kind].field
+        const next: Record<string, unknown> = { ...maps[field] }
+        delete next[id]
+        Object.assign(maps, { [field]: next })
+      } else if (kind === 'e') events = events.filter(e => e.id !== id)
       else if (kind === 'h') habits = habits.filter(h => h.id !== id)
       else if (kind === 'l') {
         habitLog = { ...habitLog }
@@ -136,6 +168,23 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
       notes = { ...notes }
       if (p.data.trim()) notes[id] = p.data
       else delete notes[id]
+    } else if (kind === 'i') {
+      const p = InboxItemSchema.safeParse(row.value)
+      if (!p.success || p.data.id !== id) continue
+      const i = inbox.findIndex(x => x.id === id)
+      inbox = i >= 0 ? inbox.map((x, j) => (j === i ? p.data : x)) : [...inbox, p.data]
+    } else if (isDayKind(kind)) {
+      if (!ISO_DATE.test(id)) continue
+      const { field, schema } = DAY_MAPS[kind]
+      const next: Record<string, unknown> = { ...maps[field] }
+      const empty = row.value === null || (Array.isArray(row.value) && row.value.length === 0)
+      if (empty) delete next[id]
+      else {
+        const p = schema.safeParse(row.value)
+        if (!p.success) continue
+        next[id] = p.data
+      }
+      Object.assign(maps, { [field]: next })
     } else if (row.key === PREFS_KEY) {
       const p = PrefsSchema.safeParse(row.value)
       if (!p.success) continue
@@ -147,7 +196,7 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
     changed = true
   }
 
-  return changed ? { data: { ...data, events, habits, habitLog, notes, settings, stamps, tombs }, changed } : { data, changed }
+  return changed ? { data: { ...data, events, habits, habitLog, notes, ...maps, inbox, settings, stamps, tombs }, changed } : { data, changed }
 }
 
 /** Stamps every record that has none (data created before sync existed), so it gets uploaded. */
@@ -164,6 +213,10 @@ export function ensureStamps(data: AppData, at = 1): AppData {
   for (const h of data.habits) need(`h:${h.id}`)
   for (const d of Object.keys(data.habitLog)) need(`l:${d}`)
   for (const d of Object.keys(data.notes)) need(`n:${d}`)
+  for (const i of data.inbox) need(`i:${i.id}`)
+  for (const kind of Object.keys(DAY_MAPS) as DayKind[]) {
+    for (const d of Object.keys(data[DAY_MAPS[kind].field])) need(`${kind}:${d}`)
+  }
   return added ? { ...data, stamps } : data
 }
 
@@ -227,8 +280,10 @@ export class SyncEngine {
     const state = this.host.loadState()
     const pushed = { ...state.pushed }
 
-    const rows = await this.transport.pull(state.cursor)
-    let cursor = state.cursor
+    // Kinds added since the last pull were skipped by the older version: pull everything once more.
+    const fresh = (state.kinds ?? 0) < SYNC_KINDS
+    const rows = await this.transport.pull(fresh ? null : state.cursor)
+    let cursor = fresh ? null : state.cursor
     if (rows.length) {
       const res = applyRemote(this.host.get(), rows)
       if (res.changed) this.host.replace(res.data)
@@ -245,6 +300,6 @@ export class SyncEngine {
       await this.transport.push(chunk)
       for (const r of chunk) pushed[r.key] = r.updated_at
     }
-    this.host.saveState({ cursor, pushed })
+    this.host.saveState({ ...state, cursor, pushed, kinds: SYNC_KINDS })
   }
 }

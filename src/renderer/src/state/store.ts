@@ -8,13 +8,15 @@ import type { UpdateStatus } from '@shared/ipc'
 import { addDays, addMonths, fromIso, toIso, todayIso } from '@shared/dates'
 
 /** `today` is the phone layout's home; on desktop the same content lives in the side panel. */
-export type View = 'today' | 'month' | 'week' | 'day' | 'habits'
+export type View = 'today' | 'month' | 'week' | 'day' | 'habits' | 'journal' | 'stats'
 
 export interface EventPreset {
   date: string
   start?: string
   end?: string
   text?: string
+  /** Planning an inbox item: it leaves the inbox once saved. */
+  inboxId?: string
 }
 
 export type SettingsTab = 'general' | 'design' | 'alerts' | 'data'
@@ -134,7 +136,7 @@ export const useStore = create<State>()((set, get) => ({
   shift(n) {
     const { view, date } = get()
     const d = fromIso(date)
-    const next = view === 'month' ? addMonths(d, n) : view === 'day' || view === 'today' ? addDays(d, n) : addDays(d, 7 * n)
+    const next = view === 'month' ? addMonths(d, n) : view === 'journal' ? addMonths(d, 12 * n) : view === 'day' || view === 'today' ? addDays(d, n) : addDays(d, 7 * n)
     set({ date: toIso(next), dir: n, ...(view === 'today' ? { view: 'day' as const, prevView: 'today' as const } : {}) })
   },
 

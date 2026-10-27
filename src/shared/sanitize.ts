@@ -1,5 +1,5 @@
 import type { AppData } from './model'
-import { CalendarEventSchema, DEFAULT_SETTINGS, HabitLogSchema, HabitSchema, NotesSchema, SettingsSchema } from './model'
+import { CalendarEventSchema, DEFAULT_SETTINGS, HabitLogSchema, HabitSchema, LookSchema, NotesSchema, SettingsSchema } from './model'
 import { ensureStamps } from './sync'
 
 /** Lenient load: one bad row never costs the whole file. New settings fields get defaults. */
@@ -12,10 +12,12 @@ export function sanitize(raw: unknown): AppData {
       return p.success ? [p.data as T] : []
     })
   const s = (r.settings ?? {}) as Record<string, unknown>
+  const look = LookSchema.safeParse({ ...DEFAULT_SETTINGS.look, ...((s.look as object) ?? {}) })
   const settings = SettingsSchema.safeParse({
     ...DEFAULT_SETTINGS,
     ...s,
     slotTimes: { ...DEFAULT_SETTINGS.slotTimes, ...((s.slotTimes as object) ?? {}) },
+    look: look.success ? look.data : DEFAULT_SETTINGS.look,
   })
   const habitLog = HabitLogSchema.safeParse(r.habitLog ?? {})
   const notes = NotesSchema.safeParse(r.notes ?? {})

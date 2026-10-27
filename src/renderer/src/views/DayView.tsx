@@ -3,14 +3,14 @@ import type { CSSProperties, FormEvent } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { CalendarEvent } from '@shared/model'
 import { SLOT_LABEL } from '@shared/constants'
-import { parseQuick } from '@shared/events'
+import { evColor, parseQuick } from '@shared/events'
 import { SLOT_ORDER, countOf, dayProgress, isActiveOn } from '@shared/habits'
 import { useStore } from '@/state/store'
 import { useEventIndex, useToday } from '@/state/hooks'
 import { saveEvent, toggleEvent } from '@/state/actions'
 import { newId } from '@/lib/fx'
 import { HabitTile } from '@/components/HabitTile'
-import { Check, Ring, cx } from '@/components/primitives'
+import { Check, PriorityMark, Ring, cx } from '@/components/primitives'
 import { Timeline } from './Timeline'
 
 const HINTS = ['9-10:30 Gimnasio #salud', '18:00 Cena con amigos #personal', 'Llamar al banco', '8am-12 Trabajo profundo #trabajo', '16:30 Inglés #estudio']
@@ -154,11 +154,12 @@ export function DayView() {
               <ul className="list">
                 <AnimatePresence initial={false}>
                   {untimed.map(e => (
-                    <motion.li key={e.id} layout className={cx('list-item', e.done && 'is-done')} style={{ '--c': `var(--cat-${e.cat})` } as CSSProperties} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+                    <motion.li key={e.id} layout className={cx('list-item', e.done && 'is-done')} style={{ '--c': evColor(e) } as CSSProperties} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
                       <button type="button" className="tick" aria-label={e.done ? 'Marcar pendiente' : 'Marcar hecho'} onClick={ev => toggleEvent(e, ev.currentTarget)}>
                         <Check on={e.done} size={12} />
                       </button>
                       <button type="button" className="list-text" onClick={() => openSheet({ kind: 'event', event: e })}>{e.text}</button>
+                      <PriorityMark value={e.priority} />
                     </motion.li>
                   ))}
                 </AnimatePresence>

@@ -1,5 +1,7 @@
 import { z } from 'zod'
-import { CATEGORIES, DEFAULT_SETTINGS, HABIT_KINDS, INKS, ISO_DATE, REPEAT_FREQS, SLOTS, TIME } from './constants'
+import {
+  BACKDROPS, CATEGORIES, DEFAULT_SETTINGS, HABIT_KINDS, HEX, HOLIDAY_COUNTRIES, INKS, ISO_DATE, PALETTES, PRIORITIES, REPEAT_FREQS, SLOTS, TIME,
+} from './constants'
 
 export * from './constants'
 
@@ -23,6 +25,9 @@ export const CalendarEventSchema = z
     end: optionalTime,
     text: z.string().trim().min(1).max(200),
     cat: z.enum(CATEGORIES),
+    /** Overrides the category colour. */
+    color: z.enum(INKS).optional(),
+    priority: z.enum(PRIORITIES).optional(),
     done: z.boolean(),
     createdAt: z.number().int().nonnegative(),
     remind: z.number().int().min(-1).max(24 * 60).optional(),
@@ -53,6 +58,17 @@ export const HabitSchema = z.object({
 export const HabitLogSchema = z.record(isoDate, z.record(z.string(), z.number().int().min(0).max(99)))
 export const NotesSchema = z.record(isoDate, z.string().max(4000))
 
+export const LookSchema = z.object({
+  palette: z.enum(PALETTES),
+  /** '' follows the palette; otherwise #rrggbb. */
+  accent: z.union([z.literal(''), z.string().regex(HEX)]),
+  backdrop: z.enum(BACKDROPS),
+  /** Backdrop strength, 0–100. */
+  glow: z.number().int().min(0).max(100),
+  /** Backdrop drifts slowly. */
+  moving: z.boolean(),
+})
+
 export const SettingsSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']),
   eventReminders: z.boolean(),
@@ -62,7 +78,12 @@ export const SettingsSchema = z.object({
   launchAtLogin: z.boolean(),
   closeToTray: z.boolean(),
   sidebar: z.boolean(),
+  look: LookSchema,
+  holidays: z.enum(HOLIDAY_COUNTRIES),
 })
+
+/** The part of the settings that follows the account to every device (sync key `s:prefs`). */
+export const PrefsSchema = z.object({ look: LookSchema, holidays: z.enum(HOLIDAY_COUNTRIES) })
 
 export const AppDataSchema = z.object({
   schema: z.literal(1),
@@ -81,6 +102,12 @@ export type Category = (typeof CATEGORIES)[number]
 export type Ink = (typeof INKS)[number]
 export type Slot = (typeof SLOTS)[number]
 export type HabitKind = (typeof HABIT_KINDS)[number]
+export type Priority = (typeof PRIORITIES)[number]
+export type Palette = (typeof PALETTES)[number]
+export type Backdrop = (typeof BACKDROPS)[number]
+export type Country = (typeof HOLIDAY_COUNTRIES)[number]
+export type Look = z.infer<typeof LookSchema>
+export type Prefs = z.infer<typeof PrefsSchema>
 export type Repeat = z.infer<typeof RepeatSchema>
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>
 export type Habit = z.infer<typeof HabitSchema>

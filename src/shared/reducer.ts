@@ -1,6 +1,8 @@
 import type { Command } from './commands'
 import type { AppData, CalendarEvent } from './model'
 
+export const PREFS_KEY = 's:prefs'
+
 function upsertById<T extends { id: string }>(list: readonly T[], item: T, index?: number): T[] {
   const i = list.findIndex(x => x.id === item.id)
   if (i >= 0) return list.map((x, j) => (j === i ? item : x))
@@ -78,7 +80,11 @@ export function applyCommand(data: AppData, cmd: Command): AppData {
       else delete notes[cmd.date]
       return { ...data, notes, ...stamp(data, `n:${cmd.date}`, cmd.at) }
     }
-    case 'settings.set':
-      return { ...data, settings: cmd.settings }
+    case 'settings.set': {
+      // Only the look and the holiday calendar follow the account; the rest belongs to this device.
+      const prefsChanged =
+        JSON.stringify([data.settings.look, data.settings.holidays]) !== JSON.stringify([cmd.settings.look, cmd.settings.holidays])
+      return { ...data, settings: cmd.settings, ...(prefsChanged ? stamp(data, PREFS_KEY, cmd.at) : {}) }
+    }
   }
 }

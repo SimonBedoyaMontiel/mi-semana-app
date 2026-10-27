@@ -163,7 +163,7 @@ export function createWebApi(): MiSemanaApi {
       if (!parsed.success) throw new Error('Invalid command')
       data = applyCommand(data, parsed.data)
       persist()
-      if (parsed.data.type !== 'settings.set') scheduleSync(SYNC_AFTER_CHANGE_MS)
+      scheduleSync(SYNC_AFTER_CHANGE_MS)
     },
     onExternalData: cb => {
       dataListeners.add(cb)

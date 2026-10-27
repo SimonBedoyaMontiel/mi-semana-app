@@ -17,10 +17,12 @@ export interface EventPreset {
   text?: string
 }
 
+export type SettingsTab = 'general' | 'design' | 'alerts' | 'data'
+
 export type Sheet =
   | { kind: 'event'; event?: EventItem; preset?: EventPreset }
   | { kind: 'habit'; habit?: Habit }
-  | { kind: 'settings' }
+  | { kind: 'settings'; tab?: SettingsTab }
   | { kind: 'account' }
   | null
 
@@ -68,7 +70,7 @@ let queue: Promise<unknown> = Promise.resolve()
 let inFlight: Command[] = []
 let toastSeq = 0
 
-const stamped = (cmd: Command): Command => (cmd.type === 'settings.set' || cmd.at !== undefined ? cmd : { ...cmd, at: Date.now() })
+const stamped = (cmd: Command): Command => (cmd.at !== undefined ? cmd : { ...cmd, at: Date.now() })
 
 export const useStore = create<State>()((set, get) => ({
   data: null,

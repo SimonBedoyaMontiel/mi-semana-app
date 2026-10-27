@@ -2,12 +2,13 @@
  * Record-level, last-writer-wins sync.
  *
  * The local document is split into small records — one per event (`e:`), habit (`h:`), day of
- * habit log (`l:`) and day note (`n:`). Every change stamps its record (see reducer.ts); deletions
+ * habit log (`l:`) and day note (`n:`), plus the look that follows the account (`s:prefs`). Every change stamps its record (see reducer.ts); deletions
  * leave a tombstone. The server keeps one row per record and only accepts a write that is newer
  * than what it has, so devices converge whatever order they sync in.
  */
 import type { AppData } from './model'
-import { CalendarEventSchema, HabitSchema, ISO_DATE } from './model'
+import { CalendarEventSchema, HabitSchema, ISO_DATE, PrefsSchema } from './model'
+import { PREFS_KEY } from './reducer'
 import { z } from 'zod'
 
 export interface RecordRow {
@@ -54,6 +55,8 @@ export function valueOf(data: AppData, key: string): unknown {
       return data.habitLog[id] ?? {}
     case 'n':
       return data.notes[id] ?? ''
+    case 's':
+      return key === PREFS_KEY ? { look: data.settings.look, holidays: data.settings.holidays } : undefined
     default:
       return undefined
   }
@@ -81,6 +84,7 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
   let habits = data.habits
   let habitLog = data.habitLog
   let notes = data.notes
+  let settings = data.settings
   const stamps = { ...data.stamps }
   const tombs = { ...data.tombs }
   let changed = false
@@ -93,6 +97,7 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
     if (!id) continue
 
     if (row.deleted) {
+      if (kind === 's') continue
       if (kind === 'e') events = events.filter(e => e.id !== id)
       else if (kind === 'h') habits = habits.filter(h => h.id !== id)
       else if (kind === 'l') {
@@ -131,6 +136,10 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
       notes = { ...notes }
       if (p.data.trim()) notes[id] = p.data
       else delete notes[id]
+    } else if (row.key === PREFS_KEY) {
+      const p = PrefsSchema.safeParse(row.value)
+      if (!p.success) continue
+      settings = { ...settings, ...p.data }
     } else continue
 
     delete tombs[row.key]
@@ -138,7 +147,7 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
     changed = true
   }
 
-  return changed ? { data: { ...data, events, habits, habitLog, notes, stamps, tombs }, changed } : { data, changed }
+  return changed ? { data: { ...data, events, habits, habitLog, notes, settings, stamps, tombs }, changed } : { data, changed }
 }
 
 /** Stamps every record that has none (data created before sync existed), so it gets uploaded. */

@@ -7,7 +7,7 @@ import { SUGGESTIONS, countOf, dayProgress, habitMeta, isActiveOn, streak } from
 import { useStore } from '@/state/store'
 import { useToday } from '@/state/hooks'
 import { tapHabit } from '@/state/actions'
-import { newId, ripple } from '@/lib/fx'
+import { burst, newId } from '@/lib/fx'
 import { Check, Icon, Ring, cx } from '@/components/primitives'
 
 const HEAT_WEEKS = 18
@@ -146,7 +146,7 @@ export function HabitsView() {
                 whileHover={{ y: -3 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={e => {
-                  ripple(e.currentTarget, `var(--${s.color})`)
+                  burst(e.currentTarget, `var(--${s.color})`)
                   dispatch({
                     type: 'habit.upsert',
                     habit: {

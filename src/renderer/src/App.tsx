@@ -11,6 +11,9 @@ import { ToastHost } from '@/components/ToastHost'
 import { MonthView } from '@/views/MonthView'
 import { WeekView } from '@/views/WeekView'
 import { DayView } from '@/views/DayView'
+import { Backdrop } from '@/components/Backdrop'
+import { useAppearance } from '@/lib/appearance'
+import { installPointerFx } from '@/lib/fx'
 
 // Less frequent surfaces load on demand.
 const HabitsView = lazy(() => import('@/views/HabitsView').then(m => ({ default: m.HabitsView })))
@@ -99,9 +102,9 @@ function CurrentView() {
       <motion.div
         key={view}
         className="view"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
-        exit={{ opacity: 0, transition: { duration: 0.12 } }}
+        initial={{ opacity: 0, y: 16, scale: 0.985, filter: 'blur(6px)' }}
+        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
+        exit={{ opacity: 0, scale: 0.99, filter: 'blur(4px)', transition: { duration: 0.16 } }}
       >
         <Suspense fallback={null}>
           {view === 'today' && <TodayPanel />}
@@ -122,7 +125,7 @@ function SheetHost() {
       <AnimatePresence>
         {sheet?.kind === 'event' && <EventSheet key="event" event={sheet.event} preset={sheet.preset} />}
         {sheet?.kind === 'habit' && <HabitSheet key="habit" habit={sheet.habit} />}
-        {sheet?.kind === 'settings' && <SettingsSheet key="settings" />}
+        {sheet?.kind === 'settings' && <SettingsSheet key="settings" tab={sheet.tab} />}
         {sheet?.kind === 'account' && <AccountSheet key="account" />}
       </AnimatePresence>
     </Suspense>
@@ -134,12 +137,15 @@ export function App() {
   const error = useStore(s => s.error)
   const narrow = useNarrow()
   const sidebar = useStore(s => s.data?.settings.sidebar ?? true) && !narrow
+  const settings = useStore(s => s.data?.settings)
+  useAppearance(settings)
   useShortcuts()
   useMainProcessEvents()
   usePhoneLayout(narrow)
 
   useEffect(() => {
     void useStore.getState().init()
+    return installPointerFx()
   }, [])
 
   if (error) return <div className="boot">No se pudieron cargar tus datos: {error}</div>
@@ -147,6 +153,7 @@ export function App() {
 
   return (
     <MotionConfig reducedMotion="user">
+      <Backdrop kind={settings!.look.backdrop} />
       <div className="app">
         <TitleBar />
         <div className={sidebar ? 'body' : 'body no-sidebar'}>

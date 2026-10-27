@@ -4,7 +4,7 @@ import {
 } from '@shared/dates'
 import type { View } from '@/state/store'
 import { useStore } from '@/state/store'
-import { useEventIndex, useNarrow, useToday } from '@/state/hooks'
+import { useEventIndex, useHolidays, useNarrow, useToday } from '@/state/hooks'
 import { KineticTitle } from './KineticTitle'
 import { Icon, Segmented, cx } from './primitives'
 
@@ -93,7 +93,10 @@ export function TitleBar() {
             {Icon.panel}
           </button>
         )}
-        <button type="button" className="icon-btn spin" title="Ajustes (Ctrl+,)" aria-label="Ajustes" onClick={() => openSheet({ kind: 'settings' })}>
+        <button type="button" className="icon-btn" title="Personalizar el diseño" aria-label="Personalizar el diseño" onClick={() => openSheet({ kind: 'settings', tab: 'design' })}>
+          {Icon.palette}
+        </button>
+        <button type="button" className="icon-btn" title="Ajustes (Ctrl+,)" aria-label="Ajustes" onClick={() => openSheet({ kind: 'settings' })}>
           {Icon.gear}
         </button>
       </div>
@@ -130,6 +133,8 @@ export function Header() {
   const idx = useEventIndex()
   const today = useToday()
   const narrow = useNarrow()
+  const holiday = useHolidays()(view === 'today' ? today : date)
+  const showHoliday = !!holiday && (view === 'day' || view === 'today')
   const prefix = date.slice(0, 7)
   let eventsInMonth = 0
   for (const [d, list] of idx) if (d.startsWith(prefix)) eventsInMonth += list.length
@@ -144,20 +149,25 @@ export function Header() {
             <button type="button" className="back" onClick={back}>{Icon.left}<span>Volver</span></button>
           )}
           {eyebrow}
+          {showHoliday && (
+            <motion.span className="hol-chip" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 22, delay: 0.15 }}>
+              {Icon.star}{holiday}
+            </motion.span>
+          )}
         </motion.div>
         <KineticTitle text={title} />
       </div>
       <div className="head-actions">
         {view !== 'today' && (
           <div className="nav">
-            <motion.button type="button" className="icon-btn" whileTap={{ x: -3 }} onClick={() => shift(-1)} aria-label="Anterior" title="Anterior (←)">{Icon.left}</motion.button>
+            <motion.button type="button" className="icon-btn magnet nudge-left" whileTap={{ x: -4 }} onClick={() => shift(-1)} aria-label="Anterior" title="Anterior (←)">{Icon.left}</motion.button>
             <button type="button" className="btn ghost" disabled={inPeriod} onClick={goToday} title="Hoy (T)">Hoy</button>
-            <motion.button type="button" className="icon-btn" whileTap={{ x: 3 }} onClick={() => shift(1)} aria-label="Siguiente" title="Siguiente (→)">{Icon.right}</motion.button>
+            <motion.button type="button" className="icon-btn magnet nudge-right" whileTap={{ x: 4 }} onClick={() => shift(1)} aria-label="Siguiente" title="Siguiente (→)">{Icon.right}</motion.button>
           </div>
         )}
         <motion.button
           type="button"
-          className={cx('btn', 'primary', narrow && 'fab')}
+          className={cx('btn', 'primary', 'magnet', narrow && 'fab')}
           whileTap={{ scale: 0.94 }}
           onClick={() => openSheet(view === 'habits' ? { kind: 'habit' } : { kind: 'event', preset: { date: view === 'today' || (view === 'month' && inPeriod) ? today : date } })}
           title={`${newLabel} (N)`}

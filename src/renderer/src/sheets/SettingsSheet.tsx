@@ -6,6 +6,7 @@ import { useStore } from '@/state/store'
 import { Sheet } from '@/components/Sheet'
 import { Segmented, Switch } from '@/components/primitives'
 import { TimeField } from '@/components/TimeField'
+import { legalUrl } from '@/lib/legal'
 
 const SLOT_FIELDS = [
   ['manana', 'Mañana'],
@@ -156,7 +157,11 @@ export function SettingsSheet() {
           <p className="hint">Importar solo añade lo que falta: no borra ni sobrescribe nada.</p>
         </section>
 
-        {info && <p className="version">Mi Semana {info.version}</p>}
+        <p className="version">
+          {info && <>Mi Semana {info.version} · </>}
+          <a href={legalUrl('privacidad')} target="_blank" rel="noopener">Privacidad</a> ·{' '}
+          <a href={legalUrl('terminos')} target="_blank" rel="noopener">Condiciones</a>
+        </p>
       </div>
     </Sheet>
   )

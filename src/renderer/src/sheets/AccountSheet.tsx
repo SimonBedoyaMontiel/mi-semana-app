@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useStore } from '@/state/store'
 import { Sheet } from '@/components/Sheet'
 import { Segmented, cx } from '@/components/primitives'
+import { legalUrl } from '@/lib/legal'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
@@ -224,6 +225,10 @@ function SignedOut() {
         {mode === 'signin' && <button type="button" className="link" onClick={() => { setMode('reset'); setError(null) }}>¿Olvidaste tu contraseña?</button>}
         {mode === 'reset' && <button type="button" className="link" onClick={() => setMode('signin')}>Volver</button>}
       </form>
+      <p className="legal">
+        Al continuar aceptas las <a href={legalUrl('terminos')} target="_blank" rel="noopener">Condiciones de uso</a> y la{' '}
+        <a href={legalUrl('privacidad')} target="_blank" rel="noopener">Política de privacidad</a>.
+      </p>
     </div>
   )
 }

@@ -589,6 +589,9 @@ button:disabled { cursor: default; }
 .progress { height: 3px; border-radius: 9px; background: var(--line-2); overflow: hidden; }
 .progress span { display: block; height: 100%; background: var(--accent); transform-origin: left; }
 .version { margin: 0; font-size: var(--t-xs); color: var(--faint); }
+.version a, .legal a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.version a:hover, .legal a:hover { color: var(--ink); }
+.legal { margin: 0; font-size: var(--t-xs); color: var(--muted); line-height: 1.5; text-align: center; }
 
 /* ───────────────────────── Toast ───────────────────────── */
 .toast-host { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 200; pointer-events: none; }

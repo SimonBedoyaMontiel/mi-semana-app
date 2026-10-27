@@ -1,14 +1,14 @@
 import { create } from 'zustand'
 import type { Command } from '@shared/commands'
 import { applyCommand } from '@shared/reducer'
-import type { AppData, CalendarEvent, Category, Habit } from '@shared/model'
+import type { Account, AppData, CalendarEvent, Category, Goal, Habit, Subscription, Transaction } from '@shared/model'
 import type { EventItem } from '@shared/events'
 import type { SyncStatus } from '@shared/sync'
 import type { UpdateStatus } from '@shared/ipc'
 import { addDays, addMonths, fromIso, toIso, todayIso } from '@shared/dates'
 
 /** `today` is the phone layout's home; on desktop the same content lives in the side panel. */
-export type View = 'today' | 'month' | 'week' | 'day' | 'habits' | 'journal' | 'stats'
+export type View = 'today' | 'month' | 'week' | 'day' | 'habits' | 'journal' | 'stats' | 'money'
 
 export interface EventPreset {
   date: string
@@ -26,6 +26,10 @@ export type Sheet =
   | { kind: 'habit'; habit?: Habit }
   | { kind: 'settings'; tab?: SettingsTab }
   | { kind: 'account' }
+  | { kind: 'tx'; tx?: Transaction; preset?: Partial<Transaction> }
+  | { kind: 'sub'; sub?: Subscription }
+  | { kind: 'wallet'; wallet?: Account }
+  | { kind: 'goal'; goal?: Goal }
   | null
 
 export interface Toast {
@@ -136,7 +140,7 @@ export const useStore = create<State>()((set, get) => ({
   shift(n) {
     const { view, date } = get()
     const d = fromIso(date)
-    const next = view === 'month' ? addMonths(d, n) : view === 'journal' ? addMonths(d, 12 * n) : view === 'day' || view === 'today' ? addDays(d, n) : addDays(d, 7 * n)
+    const next = view === 'month' || view === 'money' ? addMonths(d, n) : view === 'journal' ? addMonths(d, 12 * n) : view === 'day' || view === 'today' ? addDays(d, n) : addDays(d, 7 * n)
     set({ date: toIso(next), dir: n, ...(view === 'today' ? { view: 'day' as const, prevView: 'today' as const } : {}) })
   },
 

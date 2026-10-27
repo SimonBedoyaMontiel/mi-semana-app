@@ -2,6 +2,7 @@ import type { Command } from './commands'
 import type { AppData, CalendarEvent } from './model'
 
 export const PREFS_KEY = 's:prefs'
+export const BUDGETS_KEY = 'b:budgets'
 
 function upsertById<T extends { id: string }>(list: readonly T[], item: T, index?: number): T[] {
   const i = list.findIndex(x => x.id === item.id)
@@ -103,10 +104,29 @@ export function applyCommand(data: AppData, cmd: Command): AppData {
     }
     case 'review.set':
       return { ...data, reviews: setDay(data.reviews, cmd.week, cmd.review), ...stamp(data, `r:${cmd.week}`, cmd.at) }
+    case 'tx.upsert':
+      return { ...data, transactions: upsertById(data.transactions, cmd.item), ...stamp(data, `t:${cmd.item.id}`, cmd.at) }
+    case 'tx.delete':
+      return { ...data, transactions: data.transactions.filter(x => x.id !== cmd.id), ...stamp(data, `t:${cmd.id}`, cmd.at, true) }
+    case 'sub.upsert':
+      return { ...data, subscriptions: upsertById(data.subscriptions, cmd.item), ...stamp(data, `u:${cmd.item.id}`, cmd.at) }
+    case 'sub.delete':
+      return { ...data, subscriptions: data.subscriptions.filter(x => x.id !== cmd.id), ...stamp(data, `u:${cmd.id}`, cmd.at, true) }
+    case 'account.upsert':
+      return { ...data, accounts: upsertById(data.accounts, cmd.item), ...stamp(data, `a:${cmd.item.id}`, cmd.at) }
+    case 'account.delete':
+      return { ...data, accounts: data.accounts.filter(x => x.id !== cmd.id), ...stamp(data, `a:${cmd.id}`, cmd.at, true) }
+    case 'goal.upsert':
+      return { ...data, goals: upsertById(data.goals, cmd.item), ...stamp(data, `g:${cmd.item.id}`, cmd.at) }
+    case 'goal.delete':
+      return { ...data, goals: data.goals.filter(x => x.id !== cmd.id), ...stamp(data, `g:${cmd.id}`, cmd.at, true) }
+    case 'budgets.set':
+      return { ...data, budgets: cmd.budgets, ...stamp(data, BUDGETS_KEY, cmd.at) }
     case 'settings.set': {
       // Only the look and the holiday calendar follow the account; the rest belongs to this device.
       const prefsChanged =
-        JSON.stringify([data.settings.look, data.settings.holidays]) !== JSON.stringify([cmd.settings.look, cmd.settings.holidays])
+        JSON.stringify([data.settings.look, data.settings.holidays, data.settings.currency]) !==
+        JSON.stringify([cmd.settings.look, cmd.settings.holidays, cmd.settings.currency])
       return { ...data, settings: cmd.settings, ...(prefsChanged ? stamp(data, PREFS_KEY, cmd.at) : {}) }
     }
   }

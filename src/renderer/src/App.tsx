@@ -3,6 +3,7 @@ import { AnimatePresence, LayoutGroup, MotionConfig, motion } from 'motion/react
 import { useStore } from '@/state/store'
 import { useNarrow, useToday } from '@/state/hooks'
 import { useCarryOver } from '@/state/carry'
+import { useSubscriptionPayments } from '@/state/subs'
 import { FocusTicker } from '@/components/Focus'
 import type { UpdateStatus } from '@shared/ipc'
 import type { SyncStatus } from '@shared/sync'
@@ -24,9 +25,14 @@ const HabitSheet = lazy(() => import('@/sheets/HabitSheet').then(m => ({ default
 const SettingsSheet = lazy(() => import('@/sheets/SettingsSheet').then(m => ({ default: m.SettingsSheet })))
 const JournalView = lazy(() => import('@/views/JournalView').then(m => ({ default: m.JournalView })))
 const StatsView = lazy(() => import('@/views/StatsView').then(m => ({ default: m.StatsView })))
+const MoneyView = lazy(() => import('@/views/MoneyView').then(m => ({ default: m.MoneyView })))
+const TxSheet = lazy(() => import('@/sheets/FinanceSheets').then(m => ({ default: m.TxSheet })))
+const SubSheet = lazy(() => import('@/sheets/FinanceSheets').then(m => ({ default: m.SubSheet })))
+const WalletSheet = lazy(() => import('@/sheets/FinanceSheets').then(m => ({ default: m.WalletSheet })))
+const GoalSheet = lazy(() => import('@/sheets/FinanceSheets').then(m => ({ default: m.GoalSheet })))
 const AccountSheet = lazy(() => import('@/sheets/AccountSheet').then(m => ({ default: m.AccountSheet })))
 
-const VIEW_KEYS: Record<string, View> = { '1': 'month', '2': 'week', '3': 'day', '4': 'habits', '5': 'journal', '6': 'stats' }
+const VIEW_KEYS: Record<string, View> = { '1': 'month', '2': 'week', '3': 'day', '4': 'habits', '5': 'journal', '6': 'stats', '7': 'money' }
 
 function useShortcuts(): void {
   useEffect(() => {
@@ -118,6 +124,7 @@ function CurrentView() {
           {view === 'habits' && <HabitsView />}
           {view === 'journal' && <JournalView />}
           {view === 'stats' && <StatsView />}
+          {view === 'money' && <MoneyView />}
         </Suspense>
       </motion.div>
     </AnimatePresence>
@@ -133,6 +140,10 @@ function SheetHost() {
         {sheet?.kind === 'habit' && <HabitSheet key="habit" habit={sheet.habit} />}
         {sheet?.kind === 'settings' && <SettingsSheet key="settings" tab={sheet.tab} />}
         {sheet?.kind === 'account' && <AccountSheet key="account" />}
+        {sheet?.kind === 'tx' && <TxSheet key="tx" tx={sheet.tx} preset={sheet.preset} />}
+        {sheet?.kind === 'sub' && <SubSheet key="sub" sub={sheet.sub} />}
+        {sheet?.kind === 'wallet' && <WalletSheet key="wallet" wallet={sheet.wallet} />}
+        {sheet?.kind === 'goal' && <GoalSheet key="goal" goal={sheet.goal} />}
       </AnimatePresence>
     </Suspense>
   )
@@ -145,7 +156,9 @@ export function App() {
   const sidebar = useStore(s => s.data?.settings.sidebar ?? true) && !narrow
   const settings = useStore(s => s.data?.settings)
   useAppearance(settings)
-  useCarryOver(useToday(), ready, settings?.carryOver ?? false)
+  const today = useToday()
+  useCarryOver(today, ready, settings?.carryOver ?? false)
+  useSubscriptionPayments(today, ready)
   useShortcuts()
   useMainProcessEvents()
   usePhoneLayout(narrow)

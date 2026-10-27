@@ -17,6 +17,109 @@ export const ENERGY = ['baja', 'media', 'alta'] as const
 /** Mood scale for the journal: 1 (very bad) … 5 (very good). */
 export const MOODS = [1, 2, 3, 4, 5] as const
 export const FOCUS_CHOICES = [15, 25, 45, 60, 90] as const
+/** Currencies offered in Ajustes. Amounts are stored as integer hundredths of the unit. */
+export const CURRENCIES = ['COP', 'USD', 'EUR', 'MXN', 'ARS', 'CLP', 'PEN'] as const
+export const CURRENCY_LABEL: Record<(typeof CURRENCIES)[number], string> = {
+  COP: 'Peso colombiano (COP)',
+  USD: 'Dólar estadounidense (USD)',
+  EUR: 'Euro (EUR)',
+  MXN: 'Peso mexicano (MXN)',
+  ARS: 'Peso argentino (ARS)',
+  CLP: 'Peso chileno (CLP)',
+  PEN: 'Sol peruano (PEN)',
+}
+/** Currencies written without decimals. */
+export const WHOLE_CURRENCIES: ReadonlySet<string> = new Set(['COP', 'CLP', 'ARS'])
+
+export const TX_KINDS = ['gasto', 'ingreso'] as const
+export const EXPENSE_CATS = ['comida', 'mercado', 'transporte', 'hogar', 'servicios', 'salud', 'ocio', 'compras', 'educacion', 'suscripciones', 'otros'] as const
+export const INCOME_CATS = ['salario', 'extra', 'ventas', 'regalo', 'reembolso', 'otros_ingresos'] as const
+export const FIN_CATS = [...EXPENSE_CATS, ...INCOME_CATS] as const
+export const FIN_CAT_LABEL: Record<(typeof FIN_CATS)[number], string> = {
+  comida: 'Comida',
+  mercado: 'Mercado',
+  transporte: 'Transporte',
+  hogar: 'Hogar',
+  servicios: 'Servicios',
+  salud: 'Salud',
+  ocio: 'Ocio',
+  compras: 'Compras',
+  educacion: 'Educación',
+  suscripciones: 'Suscripciones',
+  otros: 'Otros',
+  salario: 'Salario',
+  extra: 'Trabajo extra',
+  ventas: 'Ventas',
+  regalo: 'Regalo',
+  reembolso: 'Reembolso',
+  otros_ingresos: 'Otros',
+}
+export const FIN_CAT_INK: Record<(typeof FIN_CATS)[number], Ink> = {
+  comida: 'vermilion',
+  mercado: 'amber',
+  transporte: 'cobalt',
+  hogar: 'teal',
+  servicios: 'violet',
+  salud: 'green',
+  ocio: 'magenta',
+  compras: 'amber',
+  educacion: 'violet',
+  suscripciones: 'magenta',
+  otros: 'cobalt',
+  salario: 'green',
+  extra: 'teal',
+  ventas: 'cobalt',
+  regalo: 'magenta',
+  reembolso: 'amber',
+  otros_ingresos: 'violet',
+}
+/** Icons for movements, categories, subscriptions, accounts and goals, grouped as the picker shows them. */
+export const FIN_ICON_GROUPS = [
+  { label: 'Comida y compras', icons: ['cubiertos', 'cafe', 'pizza', 'hamburguesa', 'helado', 'manzana', 'cerveza', 'copa', 'carrito', 'bolsa', 'ropa', 'regalo', 'etiqueta'] },
+  { label: 'Moverse', icons: ['bus', 'carro', 'moto', 'bici', 'tren', 'gasolina', 'parqueo', 'avion', 'maleta'] },
+  { label: 'Casa y servicios', icons: ['casa', 'sofa', 'cama', 'lavadora', 'bombilla', 'rayo', 'agua', 'llama', 'wifi', 'celular', 'tv', 'llave', 'herramienta', 'planta', 'mascota', 'bebe'] },
+  { label: 'Salud y ocio', icons: ['corazon', 'cruz', 'pastilla', 'gafas', 'tijeras', 'pesa', 'balon', 'juego', 'musica', 'auriculares', 'pelicula', 'boleto', 'camara', 'paleta', 'globo', 'nube', 'repetir'] },
+  { label: 'Trabajo y estudio', icons: ['birrete', 'libro', 'laptop', 'lapiz', 'documento', 'calculadora', 'sobre', 'paquete'] },
+  { label: 'Personas', icons: ['personas', 'donar', 'mundo', 'escudo'] },
+  { label: 'Dinero', icons: ['billete', 'monedas', 'tarjeta', 'billetera', 'banco', 'alcancia', 'grafico', 'maletin', 'reloj', 'tienda', 'retorno', 'recibo', 'porcentaje', 'diamante', 'estrella'] },
+] as const
+export const FIN_ICONS = FIN_ICON_GROUPS.flatMap(g => g.icons) as unknown as readonly [FinIconName, ...FinIconName[]]
+export type FinIconName = (typeof FIN_ICON_GROUPS)[number]['icons'][number]
+export const FIN_CAT_ICON: Record<(typeof FIN_CATS)[number], FinIconName> = {
+  comida: 'cubiertos',
+  mercado: 'carrito',
+  transporte: 'bus',
+  hogar: 'casa',
+  servicios: 'rayo',
+  salud: 'corazon',
+  ocio: 'juego',
+  compras: 'bolsa',
+  educacion: 'birrete',
+  suscripciones: 'repetir',
+  otros: 'etiqueta',
+  salario: 'maletin',
+  extra: 'reloj',
+  ventas: 'tienda',
+  regalo: 'regalo',
+  reembolso: 'retorno',
+  otros_ingresos: 'monedas',
+}
+export const ACCOUNT_KINDS = ['efectivo', 'debito', 'credito', 'ahorro'] as const
+export const ACCOUNT_KIND_LABEL: Record<(typeof ACCOUNT_KINDS)[number], string> = {
+  efectivo: 'Efectivo',
+  debito: 'Débito',
+  credito: 'Tarjeta de crédito',
+  ahorro: 'Ahorro',
+}
+export const ACCOUNT_KIND_ICON: Record<(typeof ACCOUNT_KINDS)[number], FinIconName> = {
+  efectivo: 'billete',
+  debito: 'tarjeta',
+  credito: 'tarjeta',
+  ahorro: 'alcancia',
+}
+export const CYCLES = ['semanal', 'mensual', 'anual'] as const
+export const CYCLE_LABEL: Record<(typeof CYCLES)[number], string> = { semanal: 'Cada semana', mensual: 'Cada mes', anual: 'Cada año' }
+
 /** Pending untimed tasks older than this are left where they are instead of being carried. */
 export const CARRY_DAYS = 14
 
@@ -45,6 +148,7 @@ export const DEFAULT_SETTINGS: Settings = {
   holidays: 'CO',
   carryOver: true,
   focusMinutes: 25,
+  currency: 'COP',
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {

@@ -156,6 +156,7 @@ export const Icon = {
   calendar: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>,
   book: <svg viewBox="0 0 24 24" className="ico ico-book" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" /><path className="bk-line" d="M8.5 8h7M8.5 11.5h5" /></svg>,
   chart: <svg viewBox="0 0 24 24" className="ico ico-chart" aria-hidden="true"><path d="M4 20h16" /><path className="bar b1" d="M7 20v-6" /><path className="bar b2" d="M12 20V8" /><path className="bar b3" d="M17 20v-9" /></svg>,
+  card: <svg viewBox="0 0 24 24" className="ico ico-card" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 9.5h19M6.5 15h4" /></svg>,
   search: <svg viewBox="0 0 24 24" className="ico" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>,
 }
 

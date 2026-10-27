@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Backdrop, Country, Look, Palette, Settings } from '@shared/model'
-import { ACCENTS, BACKDROPS, FOCUS_CHOICES, BACKDROP_LABEL, COUNTRY_LABEL, HEX, HOLIDAY_COUNTRIES, PALETTES, PALETTE_LABEL } from '@shared/constants'
+import { ACCENTS, BACKDROPS, CURRENCIES, CURRENCY_LABEL, FOCUS_CHOICES, BACKDROP_LABEL, COUNTRY_LABEL, HEX, HOLIDAY_COUNTRIES, PALETTES, PALETTE_LABEL } from '@shared/constants'
 import { holidaysOf } from '@shared/holidays'
 import { MONTHS_SHORT, fromIso, todayIso } from '@shared/dates'
 import type { AppInfo } from '@shared/ipc'
@@ -342,6 +342,15 @@ export function SettingsSheet({ tab: initialTab }: { tab?: SettingsTab }) {
                   </select>
                 </label>
                 <NextHolidays country={settings.holidays} />
+              </section>
+              <section>
+                <h3>{Icon.card}Finanzas</h3>
+                <label className="field inline">
+                  <span>Moneda</span>
+                  <select value={settings.currency} onChange={e => set({ currency: e.target.value as Settings['currency'] })}>
+                    {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_LABEL[c]}</option>)}
+                  </select>
+                </label>
               </section>
               <section>
                 <h3>Productividad</h3>

@@ -1,3 +1,4 @@
+import { FinBadge } from '@/components/FinIcon'
 import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -5,7 +6,8 @@ import { DAYS, MONTHS, MONTHS_SHORT, addDays, fmtDuration, fromIso, mondayOf, pa
 import { evColor } from '@shared/events'
 import { SLOT_ORDER, countOf, dayProgress, isActiveOn } from '@shared/habits'
 import { useStore } from '@/state/store'
-import { useEventIndex, useHolidays, useMinute, useNarrow, useToday } from '@/state/hooks'
+import { useCurrency, useEventIndex, useHolidays, useMinute, useNarrow, useSubsIndex, useToday } from '@/state/hooks'
+import { fmtMoney } from '@shared/money'
 import { toggleEvent } from '@/state/actions'
 import { HabitTile } from './HabitTile'
 import { FocusCard } from './Focus'
@@ -52,6 +54,10 @@ export function TodayPanel() {
   const openDay = useStore(s => s.openDay)
   const openSheet = useStore(s => s.openSheet)
   const reviews = useStore(s => s.data!.reviews)
+  const subsIdx = useSubsIndex()
+  const currency = useCurrency()
+  // Payments in the next week.
+  const upcoming = Array.from({ length: 8 }, (_, i) => toIso(addDays(fromIso(today), i))).flatMap((day, i) => (subsIdx.get(day) ?? []).map(s => ({ s, day, i })))
   const events = idx.get(today) ?? []
   const d = fromIso(today)
   const holiday = useHolidays()(today)
@@ -180,6 +186,24 @@ export function TodayPanel() {
           <p className="empty">{narrow ? 'Nada planeado. Toca + para añadir algo.' : 'Nada planeado. Pulsa N para añadir algo.'}</p>
         )}
       </section>
+
+      {upcoming.length > 0 && (
+        <section className="today-section">
+          <h3>Próximos cobros</h3>
+          <ul className="upcoming">
+            {upcoming.map(({ s, day, i }) => (
+              <motion.li key={`${s.id}${day}`} style={{ '--c': `var(--${s.color})` } as CSSProperties} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+                <button type="button" onClick={() => openSheet({ kind: 'sub', sub: s })}>
+                  <FinBadge name={s.icon ?? 'tarjeta'} size="s" />
+                  <span>{s.name}</span>
+                  <em className={cx(i <= 1 && 'is-soon')}>{i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : `En ${i} días`}</em>
+                  <b>{fmtMoney(s.cents, currency)}</b>
+                </button>
+              </motion.li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <FocusCard />
 

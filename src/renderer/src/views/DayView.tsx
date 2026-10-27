@@ -1,3 +1,5 @@
+import { FinIcon } from '@/components/FinIcon'
+import { FIN_CAT_ICON, FIN_CAT_INK } from '@shared/constants'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -6,7 +8,8 @@ import { SLOT_LABEL } from '@shared/constants'
 import { evColor, parseQuick } from '@shared/events'
 import { SLOT_ORDER, countOf, dayProgress, isActiveOn } from '@shared/habits'
 import { useStore } from '@/state/store'
-import { useEventIndex, useToday } from '@/state/hooks'
+import { useCurrency, useEventIndex, useSubsIndex, useToday } from '@/state/hooks'
+import { fmtMoney } from '@shared/money'
 import { saveEvent, toggleEvent } from '@/state/actions'
 import { newId } from '@/lib/fx'
 import { HabitTile } from '@/components/HabitTile'
@@ -86,6 +89,9 @@ export function DayView() {
   const future = date > today
   const active = habits.filter(h => isActiveOn(h, date))
   const p = dayProgress(habits, log, date)
+  const subs = useSubsIndex().get(date) ?? []
+  const currency = useCurrency()
+  const spent = useStore(s => s.data!.transactions).filter(t => t.date === date)
 
   return (
     <div className="day">
@@ -140,6 +146,28 @@ export function DayView() {
               <p className="empty">Lo que escribas sin hora, como “Llamar al banco”, aparece aquí.</p>
             )}
           </section>
+          {(subs.length > 0 || spent.length > 0) && (
+            <section className="panel">
+              <header className="panel-head"><h3>Dinero</h3></header>
+              <ul className="day-money">
+                {subs.map(s => (
+                  <li key={s.id} style={{ '--c': `var(--${s.color})` } as CSSProperties}>
+                    <button type="button" onClick={() => openSheet({ kind: 'sub', sub: s })}><FinIcon name={s.icon ?? 'tarjeta'} /><span>Cobro de {s.name}</span><b>{fmtMoney(s.cents, currency)}</b></button>
+                  </li>
+                ))}
+                {spent.map(t => (
+                  <li key={t.id} style={{ '--c': `var(--${FIN_CAT_INK[t.cat]})` } as CSSProperties}>
+                    <button type="button" onClick={() => openSheet({ kind: 'tx', tx: t })}>
+                      <FinIcon name={t.icon ?? FIN_CAT_ICON[t.cat]} />
+                      <span>{t.note || (t.kind === 'gasto' ? 'Gasto' : 'Ingreso')}</span>
+                      <b className={t.kind === 'ingreso' ? 'is-in' : 'is-out'}>{t.kind === 'ingreso' ? '+' : '−'}{fmtMoney(t.cents, currency)}</b>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="link" onClick={() => openSheet({ kind: 'tx', preset: { date } })}>Añadir gasto o ingreso</button>
+            </section>
+          )}
           <section className="panel">
             <Priorities key={date} date={date} />
           </section>

@@ -4,6 +4,8 @@ import { expandRange, indexByDate } from '@shared/events'
 import type { EventIndex } from '@shared/events'
 import { addDays, fromIso, toIso, todayIso } from '@shared/dates'
 import { holidayOn } from '@shared/holidays'
+import { subscriptionsByDate } from '@shared/money'
+import type { Subscription } from '@shared/model'
 import { useStore } from './store'
 
 /** Only rendered once data is loaded (App gates on it). */
@@ -71,4 +73,22 @@ export function useNarrow(): boolean {
 export function useHolidays(): (iso: string) => string | undefined {
   const country = useStore(s => s.data!.settings.holidays)
   return useMemo(() => (iso: string) => holidayOn(country, iso), [country])
+}
+
+/** Subscription payments by date, for the same window as useEventIndex. */
+export function useSubsIndex(): ReadonlyMap<string, readonly Subscription[]> {
+  const subs = useStore(s => s.data!.subscriptions)
+  const month = useStore(s => s.date.slice(0, 7))
+  const today = todayIso()
+  return useMemo(() => {
+    const first = fromIso(`${month}-01`)
+    const from = [toIso(addDays(first, -14)), toIso(addDays(fromIso(today), -1))].sort()[0]!
+    const to = [toIso(addDays(first, 52)), toIso(addDays(fromIso(today), 8))].sort()[1]!
+    return subscriptionsByDate(subs, from, to)
+  }, [subs, month, today])
+}
+
+/** Money in the currency chosen in Ajustes. */
+export function useCurrency(): string {
+  return useStore(s => s.data!.settings.currency)
 }

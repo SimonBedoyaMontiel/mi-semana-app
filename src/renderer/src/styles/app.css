@@ -177,6 +177,10 @@ button:disabled { cursor: default; }
 .head-actions { display: flex; align-items: center; gap: 10px; }
 .nav { display: flex; align-items: center; gap: 2px; }
 .nav .btn.ghost { height: 32px; }
+.now-btn { overflow: hidden; white-space: nowrap; gap: 4px; padding: 0 10px; color: var(--accent-text); }
+.now-btn .ico { width: 15px; height: 15px; transition: transform 0.35s var(--bounce); }
+.now-btn.is-past:hover .ico { transform: translateX(3px); }
+.now-btn.is-future:hover .ico { transform: translateX(-3px); }
 
 /* ───────────────────────── Month ───────────────────────── */
 .month { display: grid; gap: 6px; }

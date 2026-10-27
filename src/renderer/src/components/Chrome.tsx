@@ -135,6 +135,23 @@ function titleFor(view: View, date: string, today: string, eventsInMonth: number
   }
 }
 
+/** What the button that returns to the present says in each view. */
+function backLabel(view: View): string {
+  switch (view) {
+    case 'month':
+    case 'money':
+      return 'Este mes'
+    case 'week':
+    case 'habits':
+    case 'stats':
+      return 'Esta semana'
+    case 'journal':
+      return 'Este año'
+    default:
+      return 'Hoy'
+  }
+}
+
 export function Header() {
   const view = useStore(s => s.view)
   const date = useStore(s => s.date)
@@ -173,7 +190,26 @@ export function Header() {
         {view !== 'today' && (
           <div className="nav">
             <motion.button type="button" className="icon-btn magnet nudge-left" whileTap={{ x: -4 }} onClick={() => shift(-1)} aria-label="Anterior" title="Anterior (←)">{Icon.left}</motion.button>
-            <button type="button" className="btn ghost" disabled={inPeriod} onClick={goToday} title="Hoy (T)">Hoy</button>
+            <AnimatePresence initial={false}>
+              {!inPeriod && (
+                <motion.button
+                  key="back-to-now"
+                  type="button"
+                  className={cx('btn ghost now-btn', date < today ? 'is-past' : 'is-future')}
+                  onClick={goToday}
+                  title={`${backLabel(view)} (T)`}
+                  initial={{ opacity: 0, width: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, width: 'auto', scale: 1 }}
+                  exit={{ opacity: 0, width: 0, scale: 0.8 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+                  whileTap={{ scale: 0.94 }}
+                >
+                  {date > today && Icon.left}
+                  <span>{backLabel(view)}</span>
+                  {date < today && Icon.right}
+                </motion.button>
+              )}
+            </AnimatePresence>
             <motion.button type="button" className="icon-btn magnet nudge-right" whileTap={{ x: 4 }} onClick={() => shift(1)} aria-label="Siguiente" title="Siguiente (→)">{Icon.right}</motion.button>
           </div>
         )}

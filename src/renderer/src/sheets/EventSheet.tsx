@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import type { CalendarEvent, Category, Repeat } from '@shared/model'
-import { CATEGORIES, CATEGORY_LABEL, REMINDER_CHOICES, REPEAT_FREQS, REPEAT_LABEL } from '@shared/constants'
+import type { CSSProperties } from 'react'
+import type { CalendarEvent, Category, Ink, Priority, Repeat } from '@shared/model'
+import { CATEGORIES, CATEGORY_LABEL, INKS, INK_LABEL, PRIORITIES, PRIORITY_LABEL, REMINDER_CHOICES } from '@shared/constants'
 import type { EventItem } from '@shared/events'
+import { evColor } from '@shared/events'
 import { DAYS, DAYS_LETTER, fmtDuration, fromIso, fromMin, longDate, toMin, todayIso, weekday } from '@shared/dates'
 import type { EventPreset } from '@/state/store'
 import { rawEvent, useStore } from '@/state/store'
@@ -11,13 +13,32 @@ import { deleteEvent, saveEvent } from '@/state/actions'
 import type { Scope } from '@/state/actions'
 import { newId } from '@/lib/fx'
 import { Sheet } from '@/components/Sheet'
-import { Chip, Segmented } from '@/components/primitives'
+import { Chip, Icon, PriorityMark, Segmented, cx } from '@/components/primitives'
 import { TimeField } from '@/components/TimeField'
 
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180]
 const LAST = 23 * 60 + 59
-type Freq = 'none' | Repeat['freq']
+/** `days` is "on these weekdays": stored as weekly with an interval of one. */
+type Freq = 'none' | 'daily' | 'days' | 'weekly' | 'monthly'
+const FREQ_LABEL: Record<Exclude<Freq, 'none'>, string> = { daily: 'Cada día', days: 'Días concretos', weekly: 'Cada semana', monthly: 'Cada mes' }
 const UNIT: Record<Repeat['freq'], [string, string]> = { daily: ['día', 'días'], weekly: ['semana', 'semanas'], monthly: ['mes', 'meses'] }
+const WEEKDAYS = [0, 1, 2, 3, 4]
+const WEEKEND = [5, 6]
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
+const same = (a: number[], b: number[]): boolean => a.length === b.length && a.every(x => b.includes(x))
+
+function freqOf(rep: Repeat | undefined): Freq {
+  if (!rep) return 'none'
+  if (rep.freq === 'weekly' && rep.interval === 1 && (rep.days?.length ?? 1) > 1) return 'days'
+  return rep.freq
+}
+
+function daysPhrase(days: number[]): string {
+  if (same(days, ALL_DAYS)) return 'Todos los días'
+  if (same(days, WEEKDAYS)) return 'De lunes a viernes'
+  if (same(days, WEEKEND)) return 'Los fines de semana'
+  return `Los ${days.map(d => DAYS[d]!.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' y $1')}`
+}
 
 function defaultStart(date: string): string {
   if (date !== todayIso()) return '09:00'
@@ -27,6 +48,7 @@ function defaultStart(date: string): string {
 
 function repeatSummary(freq: Freq, interval: number, days: number[], until: string, date: string): string {
   if (freq === 'none') return ''
+  if (freq === 'days') return `${daysPhrase(days)}, ${until ? `hasta el ${longDate(until)}.` : 'sin fecha de fin.'}`
   const [one, many] = UNIT[freq]
   let s = interval === 1 ? `Cada ${one}` : `Cada ${interval} ${many}`
   if (freq === 'weekly') s += `, ${days.length === 7 ? 'todos los días' : days.map(d => DAYS[d]!.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' y $1')}`
@@ -51,9 +73,11 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
   const [start, setStart] = useState(initialStart || defaultStart(initialDate))
   const [end, setEnd] = useState(event?.end || preset?.end || fromMin(Math.min(toMin(initialStart || '09:00') + 60, LAST)))
   const [cat, setCat] = useState<Category>(event?.cat ?? lastCat)
+  const [color, setColor] = useState<Ink | undefined>((series ?? event)?.color)
+  const [priority, setPriority] = useState<Priority | undefined>((series ?? event)?.priority)
   const [remind, setRemind] = useState<number | undefined>(event?.remind)
   const [scope, setScope] = useState<Scope>('one')
-  const [freq, setFreq] = useState<Freq>(rep?.freq ?? 'none')
+  const [freq, setFreq] = useState<Freq>(freqOf(rep))
   const [interval, setInterval_] = useState(rep?.interval ?? 1)
   const [days, setDays] = useState<number[]>(rep?.days ?? [weekday(fromIso(initialDate))])
   const [until, setUntil] = useState(rep?.until ?? '')
@@ -79,11 +103,13 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
     e.preventDefault()
     if (!text.trim()) return fail('Escribe qué vas a hacer.')
     if (timed && (!start || !end || end <= start)) return fail('La hora de fin tiene que ser después de la de inicio.')
-    if (showRepeat && freq === 'weekly' && !days.length) return fail('Elige al menos un día de la semana.')
+    if (showRepeat && (freq === 'weekly' || freq === 'days') && !days.length) return fail('Elige al menos un día de la semana.')
     if (showRepeat && freq !== 'none' && until && until < (isOccurrence ? series!.date : date)) return fail('La fecha de fin de la repetición es anterior al primer día.')
 
     const repeat: Repeat | undefined = showRepeat && freq !== 'none'
-      ? { freq, interval, ...(freq === 'weekly' ? { days: [...days].sort() } : {}), ...(until ? { until } : {}) }
+      ? freq === 'days'
+        ? { freq: 'weekly', interval: 1, days: [...days].sort(), ...(until ? { until } : {}) }
+        : { freq, interval, ...(freq === 'weekly' ? { days: [...days].sort() } : {}), ...(until ? { until } : {}) }
       : undefined
     const base = series ?? event
     const next: CalendarEvent = {
@@ -93,6 +119,8 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
       end: timed ? end : '',
       text: text.trim(),
       cat,
+      ...(color ? { color } : {}),
+      ...(priority ? { priority } : {}),
       done: isOccurrence ? false : (event?.done ?? false),
       createdAt: base?.createdAt ?? Date.now(),
       ...(remind === undefined ? {} : { remind }),
@@ -119,7 +147,7 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
         </>
       }
     >
-      <motion.form id="event-form" className="form" onSubmit={submit} key={shake} animate={shake ? { x: [0, -8, 8, -5, 5, 0] } : undefined} transition={{ duration: 0.35 }}>
+      <motion.form id="event-form" className="form" style={{ '--c': evColor({ cat, color }) } as CSSProperties} onSubmit={submit} key={shake} animate={shake ? { x: [0, -8, 8, -5, 5, 0] } : undefined} transition={{ duration: 0.35 }}>
         {isOccurrence && (
           <div className="scope">
             <span>Este evento se repite. ¿Qué quieres cambiar?</span>
@@ -197,14 +225,36 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
                 <span>Repetir</span>
                 <div className="chips">
                   <Chip active={freq === 'none'} onClick={() => setFreq('none')}>No se repite</Chip>
-                  {REPEAT_FREQS.map(f => <Chip key={f} active={freq === f} onClick={() => setFreq(f)}>{REPEAT_LABEL[f]}</Chip>)}
+                  {(Object.keys(FREQ_LABEL) as Array<Exclude<Freq, 'none'>>).map(f => (
+                    <Chip
+                      key={f}
+                      active={freq === f}
+                      onClick={() => {
+                        setFreq(f)
+                        if (f === 'days' && days.length < 2) setDays(WEEKDAYS)
+                      }}
+                    >
+                      {freq === f && Icon.repeat}{FREQ_LABEL[f]}
+                    </Chip>
+                  ))}
                 </div>
               </div>
               <AnimatePresence initial={false}>
                 {freq !== 'none' && (
                   <motion.div className="repeat-detail" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
-                    <div className="row">
+                    {freq === 'days' && (
                       <div className="field">
+                        <span>Qué días</span>
+                        <DayPicker days={days} onChange={setDays} />
+                        <div className="chips presets">
+                          <Chip active={same(days, WEEKDAYS)} onClick={() => setDays(WEEKDAYS)}>Entre semana</Chip>
+                          <Chip active={same(days, WEEKEND)} onClick={() => setDays(WEEKEND)}>Fin de semana</Chip>
+                          <Chip active={same(days, ALL_DAYS)} onClick={() => setDays(ALL_DAYS)}>Todos</Chip>
+                        </div>
+                      </div>
+                    )}
+                    <div className="row">
+                      {freq !== 'days' && <div className="field">
                         <span>Cada</span>
                         <div className="stepper">
                           <motion.button type="button" className="mini" whileTap={{ scale: 0.85 }} onClick={() => setInterval_(n => Math.max(1, n - 1))} aria-label="Menos">−</motion.button>
@@ -216,19 +266,13 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
                           <motion.button type="button" className="mini" whileTap={{ scale: 0.85 }} onClick={() => setInterval_(n => Math.min(30, n + 1))} aria-label="Más">+</motion.button>
                           <span className="unit-label">{UNIT[freq][interval === 1 ? 0 : 1]}</span>
                         </div>
-                      </div>
+                      </div>}
                       <label className="field">
                         <span>Hasta (opcional)</span>
                         <input type="date" value={until} min={date} onChange={e => setUntil(e.target.value)} />
                       </label>
                     </div>
-                    {freq === 'weekly' && (
-                      <div className="chips">
-                        {DAYS_LETTER.map((d, i) => (
-                          <Chip key={i} className="chip-day" active={days.includes(i)} aria-label={DAYS[i]} onClick={() => setDays(ds => (ds.includes(i) ? ds.filter(x => x !== i) : [...ds, i]))}>{d}</Chip>
-                        ))}
-                      </div>
-                    )}
+                    {freq === 'weekly' && <DayPicker days={days} onChange={setDays} />}
                     <p className="hint">{repeatSummary(freq, interval, [...days].sort(), until, isOccurrence ? series!.date : date)}</p>
                   </motion.div>
                 )}
@@ -245,10 +289,76 @@ export function EventSheet({ event, preset }: { event?: EventItem; preset?: Even
             ))}
           </div>
         </div>
+        <div className="field">
+          <span>Color</span>
+          <div className="swatches">
+            <motion.button
+              type="button"
+              className={cx('swatch swatch-cat', !color && 'is-active')}
+              style={{ '--c': `var(--cat-${cat})` } as CSSProperties}
+              aria-label="Color de la categoría"
+              title="Color de la categoría"
+              whileHover={{ scale: 1.14 }}
+              whileTap={{ scale: 0.88 }}
+              onClick={() => setColor(undefined)}
+            />
+            {INKS.map(k => (
+              <motion.button
+                key={k}
+                type="button"
+                className={cx('swatch', color === k && 'is-active')}
+                style={{ '--c': `var(--${k})` } as CSSProperties}
+                aria-label={INK_LABEL[k]}
+                title={INK_LABEL[k]}
+                whileHover={{ scale: 1.14 }}
+                whileTap={{ scale: 0.88 }}
+                onClick={() => setColor(k)}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <span>Prioridad</span>
+          <div className="chips">
+            <Chip active={!priority} onClick={() => setPriority(undefined)}>Ninguna</Chip>
+            {[...PRIORITIES].reverse().map(p => (
+              <Chip key={p} className={cx('chip-prio', `is-${p}`)} active={priority === p} onClick={() => setPriority(p)}>
+                <PriorityMark value={p} />{PRIORITY_LABEL[p]}
+              </Chip>
+            ))}
+          </div>
+        </div>
         <AnimatePresence>
           {error && <motion.p className="error" role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{error}</motion.p>}
         </AnimatePresence>
       </motion.form>
     </Sheet>
+  )
+}
+
+/** Weekday toggles; each one pops when switched on. */
+function DayPicker({ days, onChange }: { days: number[]; onChange: (days: number[]) => void }) {
+  return (
+    <div className="chips day-picker" role="group" aria-label="Días de la semana">
+      {DAYS_LETTER.map((d, i) => {
+        const on = days.includes(i)
+        return (
+          <motion.button
+            key={i}
+            type="button"
+            className={cx('chip chip-day', on && 'is-active')}
+            aria-pressed={on}
+            aria-label={DAYS[i]}
+            title={DAYS[i]}
+            animate={{ scale: on ? [1, 1.18, 1] : 1 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            whileTap={{ scale: 0.85 }}
+            onClick={() => onChange(on ? days.filter(x => x !== i) : [...days, i])}
+          >
+            {d}
+          </motion.button>
+        )
+      })}
+    </div>
   )
 }

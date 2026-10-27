@@ -2,12 +2,13 @@ import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { DAYS, MONTHS, fmtDuration, fromIso, pad, toMin, weekday } from '@shared/dates'
+import { evColor } from '@shared/events'
 import { SLOT_ORDER, countOf, dayProgress, isActiveOn } from '@shared/habits'
 import { useStore } from '@/state/store'
-import { useEventIndex, useMinute, useNarrow, useToday } from '@/state/hooks'
+import { useEventIndex, useHolidays, useMinute, useNarrow, useToday } from '@/state/hooks'
 import { toggleEvent } from '@/state/actions'
 import { HabitTile } from './HabitTile'
-import { AnimatedNumber, Check, Ring, cx } from './primitives'
+import { AnimatedNumber, Check, Icon, PriorityMark, Ring, cx } from './primitives'
 
 /** HH:MM with rolling digits; the seconds bar is a pure CSS animation synced once per minute. */
 function Clock() {
@@ -19,7 +20,13 @@ function Clock() {
         {Array.from(text).map((c, i) => (
           <span key={i} className={cx('clock-slot', c === ':' && 'is-colon')}>
             <AnimatePresence mode="popLayout" initial={false}>
-              <motion.span key={c} initial={{ y: '-100%' }} animate={{ y: '0%' }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}>
+              <motion.span
+                key={c}
+                initial={{ y: '-100%', opacity: 0, filter: 'blur(4px)' }}
+                animate={{ y: '0%', opacity: 1, filter: 'blur(0px)' }}
+                exit={{ y: '100%', opacity: 0, filter: 'blur(4px)' }}
+                transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+              >
                 {c}
               </motion.span>
             </AnimatePresence>
@@ -42,6 +49,7 @@ export function TodayPanel() {
   const openSheet = useStore(s => s.openSheet)
   const events = idx.get(today) ?? []
   const d = fromIso(today)
+  const holiday = useHolidays()(today)
 
   const nowMin = new Date(minute).getHours() * 60 + new Date(minute).getMinutes()
   const current = events.find(e => e.start && !e.done && toMin(e.start) <= nowMin && nowMin < toMin(e.end))
@@ -63,6 +71,11 @@ export function TodayPanel() {
       <button type="button" className="today-date" onClick={() => openDay(today)}>
         {DAYS[weekday(d)]} {d.getDate()} de {MONTHS[d.getMonth()]}
       </button>
+      {holiday && (
+        <motion.div className="hol-banner" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          {Icon.star}<span>Hoy es festivo<b>{holiday}</b></span>
+        </motion.div>
+      )}
 
       <div className="today-progress">
         <Ring value={total ? done / total : 0} size={58} stroke={5} color="var(--accent)">
@@ -80,7 +93,7 @@ export function TodayPanel() {
             key={focus.id + (current ? 'now' : 'next')}
             type="button"
             className={cx('focus-card', current && 'is-now')}
-            style={{ '--c': `var(--cat-${focus.cat})` } as CSSProperties}
+            style={{ '--c': evColor(focus) } as CSSProperties}
             onClick={() => openSheet({ kind: 'event', event: focus })}
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -90,7 +103,7 @@ export function TodayPanel() {
             <span className="focus-label">
               {current ? <><i className="live" />Ahora · quedan {fmtDuration(toMin(focus.end) - nowMin)}</> : <>Siguiente · en {fmtDuration(toMin(focus.start) - nowMin)}</>}
             </span>
-            <span className="focus-title">{focus.text}</span>
+            <span className="focus-title"><PriorityMark value={focus.priority} />{focus.text}</span>
             <span className="focus-time">{focus.start}–{focus.end}</span>
             {current && (
               <span className="focus-bar"><span style={{ transform: `scaleX(${(nowMin - toMin(focus.start)) / Math.max(1, toMin(focus.end) - toMin(focus.start))})` }} /></span>
@@ -109,7 +122,7 @@ export function TodayPanel() {
                   key={e.id}
                   layout
                   className={cx('agenda-item', e.done && 'is-done', e.start && toMin(e.end) <= nowMin && 'is-past')}
-                  style={{ '--c': `var(--cat-${e.cat})` } as CSSProperties}
+                  style={{ '--c': evColor(e) } as CSSProperties}
                   initial={{ opacity: 0, x: 12 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, height: 0 }}
@@ -121,6 +134,7 @@ export function TodayPanel() {
                     <time>{e.start || '—'}</time>
                     <span>{e.text}</span>
                   </button>
+                  <PriorityMark value={e.priority} />
                 </motion.li>
               ))}
             </AnimatePresence>

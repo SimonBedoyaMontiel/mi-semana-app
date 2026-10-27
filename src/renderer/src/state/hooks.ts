@@ -3,6 +3,7 @@ import type { AppData } from '@shared/model'
 import { expandRange, indexByDate } from '@shared/events'
 import type { EventIndex } from '@shared/events'
 import { addDays, fromIso, toIso, todayIso } from '@shared/dates'
+import { holidayOn } from '@shared/holidays'
 import { useStore } from './store'
 
 /** Only rendered once data is loaded (App gates on it). */
@@ -64,4 +65,10 @@ export function useNarrow(): boolean {
     return () => mq.removeEventListener('change', on)
   }, [])
   return narrow
+}
+
+/** Holiday name for a date in the country chosen in Ajustes, or undefined. */
+export function useHolidays(): (iso: string) => string | undefined {
+  const country = useStore(s => s.data!.settings.holidays)
+  return useMemo(() => (iso: string) => holidayOn(country, iso), [country])
 }

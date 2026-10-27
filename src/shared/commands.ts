@@ -20,7 +20,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('habit.delete'), id, at }),
   z.object({ type: z.literal('habitLog.set'), date, habitId: id, count: z.number().int().min(0).max(99), at }),
   z.object({ type: z.literal('note.set'), date, text: z.string().max(4000), at }),
-  z.object({ type: z.literal('settings.set'), settings: SettingsSchema }),
+  z.object({ type: z.literal('settings.set'), settings: SettingsSchema, at }),
 ])
 
 export type Command = z.infer<typeof CommandSchema>

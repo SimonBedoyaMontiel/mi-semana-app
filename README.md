@@ -11,12 +11,16 @@ Agenda de escritorio para Windows: calendario mensual, semana y día con horas d
 | Entrar a un día | Clic en la casilla del mes |
 | Navegar | **←** **→**, **T** hoy, **1–4** vistas, **Esc** volver, **Ctrl+,** ajustes |
 | Hábitos | Toca el círculo; los de varias veces al día suman de uno en uno |
+| Color y prioridad | En cada evento: un color propio (o el de su categoría) y prioridad alta, media o baja |
+| Repetir ciertos días | Repetir → **Días concretos**, con atajos «Entre semana» y «Fin de semana» |
+| Festivos | Ajustes → General → **Días festivos**: Colombia, España, México, Argentina, Chile, Perú o Estados Unidos |
+| Diseño | Icono de paleta o Ajustes → **Diseño**: modo claro u oscuro, seis temas, color de acento y fondos difuminados (o una imagen propia) |
 
 Los datos se guardan en `%APPDATA%\Mi Semana\data\data.json`, con una copia automática por día (se conservan 14) en `backups\`. Desde **Ajustes → Tus datos** puedes exportar o importar una copia, incluido el archivo que genera la versión web (`web/mi-semana-web.html`, botón «Exportar para la app de escritorio»).
 
 ## Sincronización y móvil
 
-- **Cuenta**: Ajustes → Sincronización. Con la misma cuenta en el PC y en el móvil, eventos, hábitos y notas quedan iguales en ambos (los ajustes no se comparten). Si se edita lo mismo en dos sitios, gana el cambio más reciente.
+- **Cuenta**: Ajustes → Sincronización. Con la misma cuenta en el PC y en el móvil, eventos, hábitos, notas, el diseño elegido y el país de los festivos quedan iguales en ambos (el resto de ajustes y la imagen de fondo propia son de cada equipo). Si se edita lo mismo en dos sitios, gana el cambio más reciente.
 - **Móvil**: la versión web (`src/web`) se publica sola en GitHub Pages al cambiar `main`. En el teléfono, ábrela y elige «Añadir a pantalla de inicio»; funciona sin conexión.
 - **Cuentas**: con Google o con correo y contraseña (con recuperación por correo). En la web la cuenta es opcional; al cerrar sesión se puede borrar la copia del navegador. Si en un equipo entra otra cuenta, los datos de la anterior no se mezclan.
 - **Configurar Supabase** (una vez): crea un proyecto, ejecuta `supabase/schema.sql` en el SQL Editor y copia la URL y la clave pública en `.env` (ver `.env.example`) y en los secretos `SUPABASE_URL` / `SUPABASE_KEY` del repositorio.

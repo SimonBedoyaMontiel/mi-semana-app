@@ -1,10 +1,17 @@
 /*
  * Mi Semana — design tokens
  *
- * Concrete greys and one cobalt. Colour carries meaning only: the accent marks "today" and the
+ * Concrete greys and one accent. Colour carries meaning only: the accent marks "today" and the
  * primary action, the signal colour marks "now", category inks are harmonised (same lightness and
  * chroma, different hue) so no category shouts louder than another.
- * Dark mode is neutral graphite — no blue cast — with the inks lifted for contrast.
+ *
+ * <html> carries the choice (see lib/appearance.ts):
+ *   data-mode     light | dark
+ *   data-palette  grafito | papel | bosque | oceano | ciruela | medianoche
+ *   data-accent   custom  (then --accent-user / --on-accent-user hold the colour)
+ *   data-backdrop none | aurora | … | photo
+ * A palette only sets surfaces, text and its default accent; the hover, soft and text shades of the
+ * accent are derived, so any accent the user picks gets the full set.
  */
 :root {
   color-scheme: light;
@@ -12,7 +19,7 @@
   --bg: #e8e9ec;
   --bg-2: #e1e2e6;
   --surface: #f0f1f3;
-  --raised: #fbfbfc;
+  --solid: #fbfbfc;
   --hover: #f3f4f6;
   --pill: #ffffff;
   --ink: #15171b;
@@ -21,12 +28,16 @@
   --faint: #9da2ad;
   --line: #d5d8dd;
   --line-2: #e5e7ea;
+  --accent-base: #2442e6;
 
-  --accent: #2442e6;
-  --accent-hover: #1c35c2;
-  --accent-soft: #e4e8fc;
-  --accent-text: #1d36c4;
+  /* Surfaces that sit on the page. Translucent when a backdrop shows through (app.css). */
+  --raised: var(--solid);
+
+  --accent: var(--accent-base);
   --on-accent: #ffffff;
+  --accent-hover: color-mix(in oklab, var(--accent) 84%, #000);
+  --accent-soft: color-mix(in oklab, var(--accent) 12%, var(--solid));
+  --accent-text: color-mix(in oklab, var(--accent) 84%, var(--ink));
   --signal: #e0482a;
   --danger: #c93a28;
 
@@ -59,6 +70,7 @@
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0, 0.75, 0);
+  --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --fast: 140ms;
   --base: 220ms;
 
@@ -67,48 +79,117 @@
   --shadow-3: 0 2px 6px rgb(20 22 27 / 0.06), 0 24px 60px -18px rgb(20 22 27 / 0.32);
   --scrim: rgb(14 15 18 / 0.32);
 
+  --glow: 0.6;
   --titlebar: 48px;
   --controls: 144px; /* native window buttons drawn by Windows */
   --sidebar: 332px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
+:root[data-mode='dark'] {
+  color-scheme: dark;
 
-    --bg: #131313;
-    --bg-2: #171717;
-    --surface: #222222;
-    --raised: #1b1b1b;
-    --hover: #242424;
-    --pill: #333333;
-    --ink: #ececec;
-    --ink-2: #c6c6c6;
-    --muted: #919191;
-    --faint: #626262;
-    --line: #2f2f2f;
-    --line-2: #262626;
+  --bg: #131313;
+  --bg-2: #171717;
+  --surface: #222222;
+  --solid: #1b1b1b;
+  --hover: #242424;
+  --pill: #333333;
+  --ink: #ececec;
+  --ink-2: #c6c6c6;
+  --muted: #919191;
+  --faint: #626262;
+  --line: #2f2f2f;
+  --line-2: #262626;
+  --accent-base: #5a7bff;
 
-    --accent: #5a7bff;
-    --accent-hover: #7590ff;
-    --accent-soft: #222a45;
-    --accent-text: #9db0ff;
-    --on-accent: #ffffff;
-    --signal: #f2684a;
-    --danger: #f07a68;
+  --accent-hover: color-mix(in oklab, var(--accent) 84%, #fff);
+  --accent-soft: color-mix(in oklab, var(--accent) 20%, var(--solid));
+  --accent-text: color-mix(in oklab, var(--accent) 66%, #fff);
+  --signal: #f2684a;
+  --danger: #f07a68;
 
-    --cobalt: #7290f5;
-    --vermilion: #e9805f;
-    --amber: #d6a440;
-    --green: #5bb583;
-    --teal: #4fb4b2;
-    --violet: #a08ef0;
-    --magenta: #e284b5;
-    --cat-otro: #8d8d8d;
+  --cobalt: #7290f5;
+  --vermilion: #e9805f;
+  --amber: #d6a440;
+  --green: #5bb583;
+  --teal: #4fb4b2;
+  --violet: #a08ef0;
+  --magenta: #e284b5;
+  --cat-otro: #8d8d8d;
 
-    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px -8px rgb(0 0 0 / 0.6);
-    --shadow-3: 0 2px 6px rgb(0 0 0 / 0.4), 0 28px 70px -20px rgb(0 0 0 / 0.8);
-    --scrim: rgb(0 0 0 / 0.5);
-  }
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px -8px rgb(0 0 0 / 0.6);
+  --shadow-3: 0 2px 6px rgb(0 0 0 / 0.4), 0 28px 70px -20px rgb(0 0 0 / 0.8);
+  --scrim: rgb(0 0 0 / 0.5);
+}
+
+/* ───────── Palettes ───────── */
+:root[data-palette='papel'] {
+  --bg: #ece7de; --bg-2: #e5dfd4; --surface: #f1ede6; --solid: #fbf9f5; --hover: #f4f0e9; --pill: #fffdf9;
+  --ink: #1f1b16; --ink-2: #463f36; --muted: #7a7064; --faint: #a99f92; --line: #d9d1c4; --line-2: #e7e1d7;
+  --accent-base: #b5532f;
+}
+:root[data-palette='papel'][data-mode='dark'] {
+  --bg: #161412; --bg-2: #1b1815; --surface: #26221e; --solid: #1e1b18; --hover: #2a2621; --pill: #38332d;
+  --ink: #efe9e1; --ink-2: #cdc4b8; --muted: #9b9184; --faint: #675e54; --line: #342f29; --line-2: #2a2622;
+  --accent-base: #e58a63;
+  --on-accent: #111214;
+}
+
+:root[data-palette='bosque'] {
+  --bg: #e3e8e2; --bg-2: #dbe1da; --surface: #ebefe9; --solid: #f9fbf8; --hover: #f0f3ee; --pill: #ffffff;
+  --ink: #141a16; --ink-2: #39443c; --muted: #66726a; --faint: #98a39b; --line: #ccd5cd; --line-2: #e0e6df;
+  --accent-base: #2c7a4f;
+}
+:root[data-palette='bosque'][data-mode='dark'] {
+  --bg: #0f1411; --bg-2: #131915; --surface: #1d241f; --solid: #161c18; --hover: #212a24; --pill: #2c3630;
+  --ink: #e6ede8; --ink-2: #c0cbc3; --muted: #8a978e; --faint: #58645b; --line: #27312a; --line-2: #1f2722;
+  --accent-base: #5cc08a;
+  --on-accent: #111214;
+}
+
+:root[data-palette='oceano'] {
+  --bg: #e1e8ec; --bg-2: #d8e1e6; --surface: #e9eff2; --solid: #f8fbfc; --hover: #eef3f6; --pill: #ffffff;
+  --ink: #121a1f; --ink-2: #36444d; --muted: #63727c; --faint: #96a4ad; --line: #c9d5dc; --line-2: #dee6eb;
+  --accent-base: #0f7a8a;
+}
+:root[data-palette='oceano'][data-mode='dark'] {
+  --bg: #0d1417; --bg-2: #10191d; --surface: #1a2529; --solid: #131c20; --hover: #1e2a2f; --pill: #29373d;
+  --ink: #e4eef1; --ink-2: #bccbd1; --muted: #85979e; --faint: #536269; --line: #24323a; --line-2: #1c272c;
+  --accent-base: #4cc3d1;
+  --on-accent: #111214;
+}
+
+:root[data-palette='ciruela'] {
+  --bg: #ebe4e9; --bg-2: #e3dbe1; --surface: #f0eaee; --solid: #fcf9fb; --hover: #f4eff2; --pill: #ffffff;
+  --ink: #1d1519; --ink-2: #45363e; --muted: #76656f; --faint: #a797a1; --line: #d8ccd3; --line-2: #e8dfe4;
+  --accent-base: #a03a76;
+}
+:root[data-palette='ciruela'][data-mode='dark'] {
+  --bg: #151013; --bg-2: #1a1317; --surface: #261d22; --solid: #1d161a; --hover: #2a2026; --pill: #382b33;
+  --ink: #f0e6eb; --ink-2: #cdbec6; --muted: #9a8892; --faint: #64545d; --line: #33272e; --line-2: #2a2026;
+  --accent-base: #e07ab4;
+  --on-accent: #111214;
+}
+
+:root[data-palette='medianoche'] {
+  --bg: #e3e5ee; --bg-2: #dadde9; --surface: #ebedf4; --solid: #fafbfe; --hover: #eff1f7; --pill: #ffffff;
+  --ink: #13152a; --ink-2: #383c58; --muted: #666a85; --faint: #9a9db3; --line: #cfd2e1; --line-2: #e2e4ee;
+  --accent-base: #4446d6;
+}
+:root[data-palette='medianoche'][data-mode='dark'] {
+  --bg: #0c0e1a; --bg-2: #10121f; --surface: #1b1e30; --solid: #141626; --hover: #1f2236; --pill: #2b2f48;
+  --ink: #e8e9f6; --ink-2: #c2c4dc; --muted: #8b8ea8; --faint: #555872; --line: #262a40; --line-2: #1d2033;
+  --accent-base: #8e90ff;
+  --on-accent: #111214;
+}
+
+/* ───────── Own accent ───────── */
+:root[data-accent='custom'] {
+  --accent: var(--accent-user);
+  --on-accent: var(--on-accent-user);
+}
+:root[data-accent='custom'][data-mode='dark'] {
+  /* Lifted a little so it keeps its contrast on dark surfaces. */
+  --accent: color-mix(in oklab, var(--accent-user) 82%, #fff);
 }

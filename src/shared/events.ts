@@ -55,14 +55,21 @@ export function expandRange(events: readonly CalendarEvent[], from: string, to: 
   return out
 }
 
-/** Timed events first, by start; untimed after, by creation. */
+const RANK = { alta: 0, media: 1, baja: 2 } as const
+const rank = (e: CalendarEvent): number => (e.priority ? RANK[e.priority] : 1.5)
+
+/** Timed events first, by start; untimed after. Ties go to the higher priority, then the older. */
 export function byTime(a: CalendarEvent, b: CalendarEvent): number {
   return (
     (a.start ? 0 : 1) - (b.start ? 0 : 1) ||
     a.start.localeCompare(b.start) ||
+    rank(a) - rank(b) ||
     a.createdAt - b.createdAt
   )
 }
+
+/** CSS colour of an event: its own colour if chosen, else its category's. */
+export const evColor = (e: Pick<CalendarEvent, 'cat' | 'color'>): string => (e.color ? `var(--${e.color})` : `var(--cat-${e.cat})`)
 
 export type EventIndex = ReadonlyMap<string, readonly EventItem[]>
 

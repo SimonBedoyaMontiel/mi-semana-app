@@ -4,17 +4,18 @@ import { AnimatePresence, motion } from 'motion/react'
 import type { Variants } from 'motion/react'
 import type { CalendarEvent } from '@shared/model'
 import { DAYS, DAYS_SHORT, MONTHS, fromIso, monthMatrix, toIso } from '@shared/dates'
+import { evColor } from '@shared/events'
 import { dayProgress } from '@shared/habits'
 import { useStore } from '@/state/store'
-import { useEventIndex, useToday } from '@/state/hooks'
-import { cx } from '@/components/primitives'
+import { useEventIndex, useHolidays, useToday } from '@/state/hooks'
+import { Icon, PriorityMark, cx } from '@/components/primitives'
 
 const MAX_CHIPS = 3
 
 export const slide: Variants = {
-  enter: (dir: number) => ({ x: dir * 36, opacity: 0 }),
-  center: { x: 0, opacity: 1, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } },
-  exit: (dir: number) => ({ x: dir * -24, opacity: 0, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }),
+  enter: (dir: number) => ({ x: dir * 48, opacity: 0, filter: 'blur(6px)' }),
+  center: { x: 0, opacity: 1, filter: 'blur(0px)', transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
+  exit: (dir: number) => ({ x: dir * -32, opacity: 0, filter: 'blur(4px)', transition: { duration: 0.18, ease: [0.4, 0, 1, 1] } }),
 }
 
 /** Open a day with a shared-element morph: the cell gets a layoutId for one frame, then the view switches. */
@@ -25,20 +26,21 @@ export function openDayWithMorph(date: string): void {
 }
 
 const MonthCell = memo(function MonthCell({
-  iso, i, out, today, past, events, done, total, morph,
+  iso, i, out, today, past, events, done, total, morph, holiday,
 }: {
   iso: string; i: number; out: boolean; today: boolean; past: boolean
-  events: readonly CalendarEvent[]; done: number; total: number; morph: boolean
+  events: readonly CalendarEvent[]; done: number; total: number; morph: boolean; holiday?: string
 }) {
   const d = fromIso(iso)
   const openSheet = useStore(s => s.openSheet)
   return (
     <div
-      className={cx('cell', out && 'is-out', today && 'is-today', past && 'is-past')}
+      className={cx('cell', 'spot', 'tilt', out && 'is-out', today && 'is-today', past && 'is-past', holiday && 'is-holiday')}
       style={{ '--i': i } as CSSProperties}
       role="button"
       tabIndex={0}
-      aria-label={`${DAYS[(d.getDay() + 6) % 7]} ${d.getDate()} de ${MONTHS[d.getMonth()]}: ${events.length} eventos`}
+      title={holiday}
+      aria-label={`${DAYS[(d.getDay() + 6) % 7]} ${d.getDate()} de ${MONTHS[d.getMonth()]}${holiday ? `, festivo: ${holiday}` : ''}: ${events.length} eventos`}
       onClick={() => openDayWithMorph(iso)}
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -63,12 +65,14 @@ const MonthCell = memo(function MonthCell({
           +
         </button>
       </div>
+      {holiday && <span className="cell-hol">{Icon.star}<span>{holiday}</span></span>}
       <ul className="cell-evs">
         {events.slice(0, MAX_CHIPS).map(e => (
-          <li key={e.id} className={cx('cell-ev', e.done && 'is-done')} style={{ '--c': `var(--cat-${e.cat})` } as CSSProperties}>
+          <li key={e.id} className={cx('cell-ev', e.done && 'is-done', e.priority && `is-${e.priority}`)} style={{ '--c': evColor(e) } as CSSProperties}>
             <i />
             {e.start && <time>{e.start}</time>}
             <span>{e.text}</span>
+            <PriorityMark value={e.priority} />
           </li>
         ))}
         {events.length > MAX_CHIPS && <li className="cell-more">+{events.length - MAX_CHIPS}</li>}
@@ -90,6 +94,7 @@ export function MonthView() {
   const log = useStore(s => s.data!.habitLog)
   const idx = useEventIndex()
   const today = useToday()
+  const holidayOf = useHolidays()
   const monthKey = date.slice(0, 7)
   const cells = useMemo(() => monthMatrix(fromIso(`${monthKey}-01`)).map(toIso), [monthKey])
 
@@ -123,6 +128,7 @@ export function MonthView() {
                 done={p.done}
                 total={p.total}
                 morph={morph === iso}
+                holiday={holidayOf(iso)}
               />
             )
           })}

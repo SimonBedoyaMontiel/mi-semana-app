@@ -2,12 +2,12 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { motion } from 'motion/react'
 import type { EventIndex, EventItem, PlacedEvent } from '@shared/events'
-import { hourWindow, layoutDay } from '@shared/events'
+import { evColor, hourWindow, layoutDay } from '@shared/events'
 import { fromMin, pad, toMin } from '@shared/dates'
 import { useStore } from '@/state/store'
 import { moveEvent, toggleEvent } from '@/state/actions'
 import { useMinute } from '@/state/hooks'
-import { Check, SPRING, cx } from '@/components/primitives'
+import { Check, PriorityMark, SPRING, cx } from '@/components/primitives'
 
 const SNAP = 15
 const LAST_MIN = 23 * 60 + 59
@@ -34,19 +34,19 @@ const EventBlock = memo(function EventBlock({ p, h0, hh, compact }: { p: PlacedE
       tabIndex={0}
       role="button"
       aria-label={`${e.text}, de ${e.start} a ${e.end}${e.done ? ', hecho' : ''}`}
-      className={cx('ev', e.done && 'is-done', short && 'is-short', compact && 'is-compact')}
+      className={cx('ev', 'spot', e.done && 'is-done', short && 'is-short', compact && 'is-compact', e.priority && `is-${e.priority}`)}
       style={{
         top,
         height,
         left: `calc(${p.col} / ${p.cols} * 100% + 2px)`,
         width: `calc(100% / ${p.cols} - 4px)`,
-        '--c': `var(--cat-${e.cat})`,
+        '--c': evColor(e),
       } as CSSProperties}
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={SPRING}
     >
-      <div className="ev-title">{e.text}</div>
+      <div className="ev-title"><PriorityMark value={e.priority} />{e.text}</div>
       <div className="ev-time">{e.start}–{e.end}{e.repeat && <svg className="ev-repeat" viewBox="0 0 16 16" aria-label="Se repite"><path d="M3 6.5a5 5 0 0 1 8.6-2.3L13 5.6M13 2.5v3.1H9.9M13 9.5a5 5 0 0 1-8.6 2.3L3 10.4M3 13.5v-3.1h3.1" /></svg>}</div>
       {!compact && (
         <button
@@ -240,7 +240,7 @@ export function Timeline({ days, idx, hh, today, compact = false }: { days: stri
         layoutId={`tl-${drag.ev.id}`}
         transition={{ layout: { duration: 0 } }}
         className={cx('ev', 'is-dragging', drag.ev.done && 'is-done', compact && 'is-compact')}
-        style={{ top: ((start - h0 * 60) / 60) * hh, height: Math.max(20, ((end - start) / 60) * hh - 2), left: 2, width: 'calc(100% - 4px)', '--c': `var(--cat-${drag.ev.cat})` } as CSSProperties}
+        style={{ top: ((start - h0 * 60) / 60) * hh, height: Math.max(20, ((end - start) / 60) * hh - 2), left: 2, width: 'calc(100% - 4px)', '--c': evColor(drag.ev) } as CSSProperties}
       >
         <div className="ev-title">{drag.ev.text}</div>
         <div className="ev-time">{fromMin(start)}–{fromMin(end)}</div>

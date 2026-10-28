@@ -273,7 +273,7 @@ button:disabled { cursor: default; }
 }
 
 .ev {
-  position: absolute; z-index: 1; border-radius: var(--r-s); padding: 5px 26px 5px 8px; overflow: hidden; cursor: grab;
+  position: absolute; z-index: 1; left: var(--l); width: var(--w); border-radius: var(--r-s); padding: 5px 26px 5px 8px; overflow: hidden; cursor: grab;
   background: color-mix(in oklab, var(--c) 13%, var(--raised));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 22%, transparent);
   transition: box-shadow var(--base) var(--ease), background var(--base), opacity var(--base);
@@ -465,7 +465,7 @@ button:disabled { cursor: default; }
 .heat-legend i { width: 10px; height: 10px; border-radius: 3px; background: color-mix(in oklab, var(--accent) calc(var(--v) * 100%), var(--line-2)); }
 
 /* ───────────────────────── Today panel ───────────────────────── */
-.today { display: grid; gap: 22px; padding: 22px 20px 40px; align-content: start; }
+.today { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; padding: 22px 20px 40px; align-content: start; }
 .clock { display: grid; gap: 10px; }
 .clock-digits { display: flex; font: 680 60px/0.9 var(--f-display); font-stretch: 80%; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
 .clock-slot { display: inline-block; overflow: hidden; height: 0.94em; }
@@ -496,8 +496,8 @@ button:disabled { cursor: default; }
 .focus-bar { margin-top: 8px; height: 2px; border-radius: 9px; background: var(--line-2); overflow: hidden; }
 .focus-bar span { display: block; height: 100%; background: var(--c); transform-origin: left; transition: transform 1s var(--ease); }
 
-.today-section { display: grid; gap: 8px; }
-.agenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.today-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.agenda { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
 .agenda-item { display: flex; align-items: center; gap: 10px; padding: 5px 4px; border-radius: 8px; transition: background var(--fast); }
 .agenda-item:hover { background: var(--hover); }
 .agenda-item.is-past:not(.is-done) .agenda-text { opacity: 0.6; }
@@ -1444,7 +1444,7 @@ html[data-platform='web'] body { user-select: auto; }
 .ev.is-compact .ev-join { left: auto; bottom: auto; top: 3px; right: 3px; width: 22px; height: 20px; padding: 0; justify-content: center; }
 .ev.is-compact .ev-join span { display: none; }
 .ev.is-compact:has(.ev-join) { padding-right: 28px; }
-.agenda-text .ev-marks { margin-left: 0; }
+.agenda-text .ev-marks { margin-left: 0; flex: none; }
 .agenda-item .join-btn { margin-left: 4px; }
 .span-tag { margin-left: 6px; padding: 0 6px; border-radius: 99px; font-size: 10.5px; font-weight: 650; color: color-mix(in oklab, var(--c) 70%, var(--ink)); background: color-mix(in oklab, var(--c) 14%, transparent); vertical-align: 1px; }
 
@@ -1541,3 +1541,18 @@ html[data-platform='web'] body { user-select: auto; }
 
 .row-when { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); }
 .row-when .seg-btn { white-space: nowrap; padding: 0 9px; }
+
+/* Events at the same time in a narrow column: the title gets all the room, and hovering one
+   opens it over its neighbours so it can be read whole. */
+.ev.is-tight { padding: 3px 4px 3px 5px; transition: left 0.28s var(--ease) 0.12s, width 0.28s var(--ease) 0.12s, box-shadow var(--base) var(--ease), background var(--base), opacity var(--base); }
+.ev.is-tight .ev-title { font-size: 11px; line-height: 1.2; overflow-wrap: normal; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+.ev.is-tight .ev-title .prio { display: none; }
+.ev.is-tight :is(.ev-time, .ev-marks, .ev-place, .ev-join, .ev-check) { display: none; }
+.ev.is-tight.is-short .ev-title { white-space: nowrap; }
+.ev.is-tight:hover, .ev.is-tight:focus-visible {
+  left: 2px; width: calc(100% - 4px); z-index: 6; padding: 4px 6px;
+  background: color-mix(in oklab, var(--c) 16%, var(--solid)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 50%, transparent), var(--shadow-3);
+}
+.ev.is-tight:hover .ev-title, .ev.is-tight:focus-visible .ev-title { font-size: 12px; }
+.ev.is-tight:hover :is(.ev-time, .ev-marks), .ev.is-tight:focus-visible :is(.ev-time, .ev-marks) { display: flex; }
+.ev.is-tight:hover .ev-join { display: inline-flex; }

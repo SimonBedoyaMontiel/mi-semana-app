@@ -8,7 +8,7 @@
  */
 import type { AppData } from './model'
 import {
-  AccountSchema, BudgetsSchema, CalendarEventSchema, FocusSessionSchema, GoalSchema, HabitSchema, SubscriptionSchema, TransactionSchema, ISO_DATE, InboxItemSchema, JournalSchema, PrefsSchema, ReviewSchema, TopSchema,
+  AccountSchema, BudgetsSchema, CalendarEventSchema, FocusSessionSchema, GoalSchema, TemplateSchema, HabitSchema, SubscriptionSchema, TransactionSchema, ISO_DATE, InboxItemSchema, JournalSchema, PrefsSchema, ReviewSchema, TopSchema,
 } from './model'
 import { BUDGETS_KEY, PREFS_KEY } from './reducer'
 import { z } from 'zod'
@@ -37,7 +37,7 @@ export interface SyncState {
  * Bumped whenever a new kind of record is added. An older version skips rows it does not know
  * yet, so after an update the next pull starts again from the beginning to pick them up.
  */
-export const SYNC_KINDS = 4
+export const SYNC_KINDS = 5
 
 export const emptySyncState = (): SyncState => ({ userId: null, cursor: null, pushed: {}, kinds: SYNC_KINDS })
 
@@ -70,6 +70,7 @@ const ID_LISTS = {
   u: { field: 'subscriptions', schema: SubscriptionSchema },
   a: { field: 'accounts', schema: AccountSchema },
   g: { field: 'goals', schema: GoalSchema },
+  x: { field: 'templates', schema: TemplateSchema },
 } as const
 type ListKind = keyof typeof ID_LISTS
 const isListKind = (k: string | undefined): k is ListKind => !!k && k in ID_LISTS
@@ -126,7 +127,7 @@ export function applyRemote(data: AppData, rows: readonly RecordRow[]): { data: 
   }
   let budgets = data.budgets
   const lists: Pick<AppData, (typeof ID_LISTS)[ListKind]['field']> = {
-    transactions: data.transactions, subscriptions: data.subscriptions, accounts: data.accounts, goals: data.goals,
+    transactions: data.transactions, subscriptions: data.subscriptions, accounts: data.accounts, goals: data.goals, templates: data.templates,
   }
   const stamps = { ...data.stamps }
   const tombs = { ...data.tombs }

@@ -11,7 +11,7 @@ export const CATEGORIES = ['trabajo', 'estudio', 'salud', 'personal', 'otro'] as
 export const INKS = ['cobalt', 'vermilion', 'amber', 'green', 'teal', 'violet', 'magenta'] as const
 export const SLOTS = ['manana', 'mediodia', 'tarde', 'noche', 'cualquiera'] as const
 export const HABIT_KINDS = ['habito', 'suplemento'] as const
-export const REPEAT_FREQS = ['daily', 'weekly', 'monthly'] as const
+export const REPEAT_FREQS = ['daily', 'weekly', 'monthly', 'yearly'] as const
 export const PRIORITIES = ['alta', 'media', 'baja'] as const
 export const ENERGY = ['baja', 'media', 'alta'] as const
 /** Mood scale for the journal: 1 (very bad) … 5 (very good). */
@@ -249,6 +249,7 @@ export const REPEAT_LABEL: Record<(typeof REPEAT_FREQS)[number], string> = {
   daily: 'Cada día',
   weekly: 'Cada semana',
   monthly: 'Cada mes',
+  yearly: 'Cada año',
 }
 
 /** Public web app. E-mail confirmations and password resets land here, also for desktop users. */

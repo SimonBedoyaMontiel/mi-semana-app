@@ -17,6 +17,8 @@ export interface EventPreset {
   text?: string
   /** Planning an inbox item: it leaves the inbox once saved. */
   inboxId?: string
+  /** Fields of a duplicated event. */
+  copy?: Partial<CalendarEvent>
 }
 
 export type SettingsTab = 'general' | 'design' | 'alerts' | 'data'

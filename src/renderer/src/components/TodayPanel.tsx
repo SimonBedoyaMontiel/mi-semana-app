@@ -1,4 +1,3 @@
-import { FinBadge } from '@/components/FinIcon'
 import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -15,6 +14,8 @@ import { Inbox } from './Inbox'
 import { MoodPicker } from './Journal'
 import { Priorities } from './Priorities'
 import { AnimatedNumber, Check, Icon, PriorityMark, Ring, cx } from './primitives'
+import { EventMarks, JoinButton } from '@/components/EventBits'
+import { FinBadge } from '@/components/FinIcon'
 
 /** HH:MM with rolling digits; the seconds bar is a pure CSS animation synced once per minute. */
 function Clock() {
@@ -175,7 +176,12 @@ export function TodayPanel() {
                   <button type="button" className="agenda-text" onClick={() => openSheet({ kind: 'event', event: e })}>
                     <time>{e.start || '—'}</time>
                     <span>{e.text}</span>
+                    <EventMarks e={e} />
                   </button>
+                  {/* «Unirse» stands out from 15 minutes before until the meeting ends. */}
+                  {e.link && !e.done && (!e.start || toMin(e.end) > nowMin) && (
+                    <JoinButton url={e.link} size="s" className={cx(e.start && toMin(e.start) - nowMin <= 15 && 'is-now')} />
+                  )}
                   {e.from && <span className="from-tag" title="Pasó de un día anterior">del {fromIso(e.from).getDate()} {MONTHS_SHORT[fromIso(e.from).getMonth()]}</span>}
                   <PriorityMark value={e.priority} />
                 </motion.li>

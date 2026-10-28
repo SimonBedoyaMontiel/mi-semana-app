@@ -120,6 +120,10 @@ export function applyCommand(data: AppData, cmd: Command): AppData {
       return { ...data, goals: upsertById(data.goals, cmd.item), ...stamp(data, `g:${cmd.item.id}`, cmd.at) }
     case 'goal.delete':
       return { ...data, goals: data.goals.filter(x => x.id !== cmd.id), ...stamp(data, `g:${cmd.id}`, cmd.at, true) }
+    case 'template.upsert':
+      return { ...data, templates: upsertById(data.templates, cmd.item), ...stamp(data, `x:${cmd.item.id}`, cmd.at) }
+    case 'template.delete':
+      return { ...data, templates: data.templates.filter(x => x.id !== cmd.id), ...stamp(data, `x:${cmd.id}`, cmd.at, true) }
     case 'budgets.set':
       return { ...data, budgets: cmd.budgets, ...stamp(data, BUDGETS_KEY, cmd.at) }
     case 'settings.set': {

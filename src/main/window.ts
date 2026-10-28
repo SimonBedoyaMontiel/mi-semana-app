@@ -73,9 +73,9 @@ export function createMainWindow(opts: { stateFile: string; preload: string; sho
     win.setTitleBarOverlay({ color: '#00000000', symbolColor: n.symbol, height: TITLEBAR_HEIGHT })
   })
 
-  // Security: the window only ever shows the bundled app. External https links go to the browser.
+  // Security: the window only ever shows the bundled app. External web links go to the browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) void shell.openExternal(url)
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
   win.webContents.on('will-navigate', (e, url) => {

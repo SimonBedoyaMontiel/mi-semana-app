@@ -8,6 +8,7 @@ import { useStore } from '@/state/store'
 import { moveEvent, toggleEvent } from '@/state/actions'
 import { useMinute } from '@/state/hooks'
 import { Check, PriorityMark, cx } from '@/components/primitives'
+import { EventMarks, JoinButton } from '@/components/EventBits'
 
 const SNAP = 15
 const LAST_MIN = 23 * 60 + 59
@@ -48,6 +49,9 @@ const EventBlock = memo(function EventBlock({ p, h0, hh, compact }: { p: PlacedE
     >
       <div className="ev-title"><PriorityMark value={e.priority} />{e.text}</div>
       <div className="ev-time">{e.start}–{e.end}{e.repeat && <svg className="ev-repeat" viewBox="0 0 16 16" aria-label="Se repite"><path d="M3 6.5a5 5 0 0 1 8.6-2.3L13 5.6M13 2.5v3.1H9.9M13 9.5a5 5 0 0 1-8.6 2.3L3 10.4M3 13.5v-3.1h3.1" /></svg>}</div>
+      {!short && <EventMarks e={e} />}
+      {!short && !compact && e.location && <div className="ev-place">{e.location}</div>}
+      {e.link && !e.done && (compact || height >= 52) && <JoinButton url={e.link} size="s" className="ev-join" />}
       {!compact && (
         <button
           type="button"

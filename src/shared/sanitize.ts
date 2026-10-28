@@ -1,7 +1,7 @@
 import type { z } from 'zod'
 import type { AppData } from './model'
 import {
-  AccountSchema, BudgetsSchema, CalendarEventSchema, DEFAULT_SETTINGS, GoalSchema, SubscriptionSchema, TransactionSchema, FocusSessionSchema, HabitLogSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema,
+  AccountSchema, BudgetsSchema, TemplateSchema, CalendarEventSchema, DEFAULT_SETTINGS, GoalSchema, SubscriptionSchema, TransactionSchema, FocusSessionSchema, HabitLogSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema,
   LookSchema, NotesSchema, ReviewSchema, SettingsSchema, TopSchema,
 } from './model'
 import { ensureStamps } from './sync'
@@ -50,6 +50,7 @@ export function sanitize(raw: unknown): AppData {
     transactions: keep(r.transactions, v => TransactionSchema.safeParse(v)),
     subscriptions: keep(r.subscriptions, v => SubscriptionSchema.safeParse(v)),
     goals: keep(r.goals, v => GoalSchema.safeParse(v)),
+    templates: keep(r.templates, v => TemplateSchema.safeParse(v)),
     budgets: BudgetsSchema.safeParse(r.budgets ?? {}).data ?? {},
     settings: settings.success ? settings.data : structuredClone(DEFAULT_SETTINGS),
     stamps: times(r.stamps),

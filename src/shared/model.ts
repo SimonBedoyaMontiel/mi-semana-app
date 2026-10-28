@@ -15,7 +15,27 @@ export const RepeatSchema = z.object({
   /** Weekly only: Monday = 0 … Sunday = 6. Defaults to the weekday of the first date. */
   days: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
   until: isoDate.optional(),
+  /** Ends after this many occurrences (removed days still count, as in other calendars). */
+  count: z.number().int().min(1).max(999).optional(),
+  /** Monthly only: the nth weekday of the first date (1–4), or -1 for the last one in the month. */
+  pos: z.union([z.literal(-1), z.number().int().min(1).max(4)]).optional(),
 })
+
+export const SubtaskSchema = z.object({
+  id: z.string().min(1).max(64),
+  text: z.string().trim().min(1).max(200),
+  done: z.boolean(),
+})
+
+/** Optional details shared by events and templates. */
+const eventDetails = {
+  /** Video call or any web address; opens with «Unirse». */
+  link: z.string().trim().url().max(500).refine(u => /^https?:\/\//i.test(u)).optional(),
+  location: z.string().trim().min(1).max(200).optional(),
+  notes: z.string().max(5000).optional(),
+  tasks: z.array(SubtaskSchema).max(50).optional(),
+  guests: z.array(z.string().trim().min(1).max(100)).max(30).optional(),
+}
 
 export const CalendarEventSchema = z
   .object({
@@ -38,11 +58,33 @@ export const CalendarEventSchema = z
     doneDates: z.array(isoDate).max(5000).optional(),
     /** Untimed task moved forward because it was not done: the day it was first planned for. */
     from: isoDate.optional(),
+    /** All-day events that last several days: the last day. */
+    endDate: isoDate.optional(),
+    ...eventDetails,
   })
   .refine(e => (e.start === '' ? e.end === '' : e.end !== '' && e.end > e.start), {
     message: 'La hora de fin tiene que ser posterior a la de inicio',
     path: ['end'],
   })
+  .refine(e => !e.endDate || (e.endDate > e.date && !e.start && !e.repeat), {
+    message: 'Un evento de varios días va sin hora, no se repite y termina después de empezar',
+    path: ['endDate'],
+  })
+
+/** A saved event to reuse: everything but the date. */
+export const TemplateSchema = z.object({
+  id: z.string().min(1).max(64),
+  text: z.string().trim().min(1).max(200),
+  /** Minutes from midnight and length; 0 length means no time. */
+  startMin: z.number().int().min(0).max(24 * 60 - 1),
+  minutes: z.number().int().min(0).max(24 * 60),
+  cat: z.enum(CATEGORIES),
+  color: z.enum(INKS).optional(),
+  priority: z.enum(PRIORITIES).optional(),
+  remind: z.number().int().min(-1).max(24 * 60).optional(),
+  ...eventDetails,
+  createdAt: z.number().int().nonnegative(),
+})
 
 export const HabitSchema = z.object({
   id: z.string().min(1).max(64),
@@ -215,11 +257,12 @@ export const AppDataSchema = z.object({
   subscriptions: z.array(SubscriptionSchema),
   goals: z.array(GoalSchema),
   budgets: BudgetsSchema,
+  templates: z.array(TemplateSchema),
   settings: SettingsSchema,
   /**
    * Sync bookkeeping: record key → last change (ms). Keys: e:<id> event, h:<id> habit, l:<date> habit log,
    * n:<date> note, j:<date> journal, p:<date> priorities, f:<date> focus, r:<monday> review, i:<id> inbox, s:prefs,
-   * t:<id> transaction, u:<id> subscription, a:<id> account, g:<id> goal, b:budgets.
+   * t:<id> transaction, u:<id> subscription, a:<id> account, g:<id> goal, b:budgets, x:<id> template.
    */
   stamps: z.record(z.string(), z.number()),
   /** Record key → deletion time (ms), so deletions travel between devices. */
@@ -227,6 +270,8 @@ export const AppDataSchema = z.object({
 })
 
 export type Category = (typeof CATEGORIES)[number]
+export type Template = z.infer<typeof TemplateSchema>
+export type Subtask = z.infer<typeof SubtaskSchema>
 export type Ink = (typeof INKS)[number]
 export type Slot = (typeof SLOTS)[number]
 export type HabitKind = (typeof HABIT_KINDS)[number]
@@ -274,6 +319,7 @@ export const emptyData = (): AppData => ({
   subscriptions: [],
   goals: [],
   budgets: {},
+  templates: [],
   settings: structuredClone(DEFAULT_SETTINGS),
   stamps: {},
   tombs: {},

@@ -1,24 +1,33 @@
-import { FinIcon } from '@/components/FinIcon'
-import { FIN_CAT_ICON, FIN_CAT_INK } from '@shared/constants'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { CalendarEvent } from '@shared/model'
-import { SLOT_LABEL } from '@shared/constants'
+import { FIN_CAT_ICON, FIN_CAT_INK, REPEAT_LABEL, SLOT_LABEL } from '@shared/constants'
+import { DAYS, MONTHS_SHORT, addDays, fromIso, toIso, todayIso, weekday } from '@shared/dates'
 import { evColor, parseQuick } from '@shared/events'
 import { SLOT_ORDER, countOf, dayProgress, isActiveOn } from '@shared/habits'
+import { fmtMoney } from '@shared/money'
 import { useStore } from '@/state/store'
 import { useCurrency, useEventIndex, useSubsIndex, useToday } from '@/state/hooks'
-import { fmtMoney } from '@shared/money'
 import { saveEvent, toggleEvent } from '@/state/actions'
 import { newId } from '@/lib/fx'
 import { HabitTile } from '@/components/HabitTile'
-import { Check, PriorityMark, Ring, cx } from '@/components/primitives'
-import { Timeline } from './Timeline'
+import { Check, Icon, PriorityMark, Ring, cx } from '@/components/primitives'
+import { EvIcon, EventMarks, JoinButton } from '@/components/EventBits'
+import { FinIcon } from '@/components/FinIcon'
 import { JournalPanel } from '@/components/Journal'
 import { Priorities } from '@/components/Priorities'
+import { Timeline } from './Timeline'
 
-const HINTS = ['9-10:30 Gimnasio #salud', '18:00 Cena con amigos #personal', 'Llamar al banco', '8am-12 Trabajo profundo #trabajo', '16:30 Inglés #estudio']
+/** "Mañana", "Vie 30 oct". */
+function shortDay(iso: string): string {
+  if (iso === todayIso()) return 'Hoy'
+  if (iso === toIso(addDays(fromIso(todayIso()), 1))) return 'Mañana'
+  const d = fromIso(iso)
+  return `${DAYS[weekday(d)]!.slice(0, 3)} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`
+}
+
+const HINTS = ['9-10:30 Gimnasio #salud', 'mañana 18:00 Cena con amigos', 'Inglés cada martes y jueves a las 18', 'Reunión el viernes 10:00 y pega el enlace', 'Standup de lunes a viernes 9:00', 'Cumpleaños de Ana 15/11 cada año']
 
 function QuickAdd({ date }: { date: string }) {
   const [value, setValue] = useState('')
@@ -36,8 +45,10 @@ function QuickAdd({ date }: { date: string }) {
     e.preventDefault()
     if (!parsed.text) return
     const ev: CalendarEvent = {
-      id: newId(), date, start: parsed.start, end: parsed.end, text: parsed.text,
+      id: newId(), date: parsed.date ?? date, start: parsed.start, end: parsed.end, text: parsed.text,
       cat: parsed.cat ?? lastCat, done: false, createdAt: Date.now(),
+      ...(parsed.repeat ? { repeat: parsed.repeat } : {}),
+      ...(parsed.link ? { link: parsed.link } : {}),
     }
     saveEvent(ev, undefined)
     setValue('')
@@ -62,15 +73,29 @@ function QuickAdd({ date }: { date: string }) {
           </AnimatePresence>
         )}
         <AnimatePresence>
-          {value && (parsed.start || parsed.cat) && (
+          {value && (parsed.start || parsed.cat || parsed.date || parsed.repeat || parsed.link) && (
             <motion.span className="quick-parse" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+              {parsed.date && parsed.date !== date && <em>{shortDay(parsed.date)}</em>}
               {parsed.start && `${parsed.start}–${parsed.end}`}
+              {parsed.repeat && <em className="qp-repeat">{Icon.repeat}{REPEAT_LABEL[parsed.repeat.freq]}{parsed.repeat.count ? ` · ${parsed.repeat.count}` : ''}</em>}
+              {parsed.link && EvIcon.video}
               {parsed.cat && <i style={{ '--c': `var(--cat-${parsed.cat})` } as CSSProperties}>#{parsed.cat}</i>}
             </motion.span>
           )}
         </AnimatePresence>
       </div>
-      <button type="button" className="btn ghost" onClick={() => openSheet({ kind: 'event', preset: { date, text: parsed.text } })}>
+      <button
+        type="button"
+        className="btn ghost"
+        onClick={() => openSheet({
+          kind: 'event',
+          preset: {
+            date: parsed.date ?? date, text: parsed.text,
+            ...(parsed.start ? { start: parsed.start, end: parsed.end } : {}),
+            ...(parsed.repeat || parsed.link ? { copy: { text: parsed.text, start: parsed.start, end: parsed.end, ...(parsed.cat ? { cat: parsed.cat } : {}), ...(parsed.repeat ? { repeat: parsed.repeat } : {}), ...(parsed.link ? { link: parsed.link } : {}) } } : {}),
+          },
+        })}
+      >
         Con detalles
       </button>
     </form>
@@ -135,7 +160,12 @@ export function DayView() {
                       <button type="button" className="tick" aria-label={e.done ? 'Marcar pendiente' : 'Marcar hecho'} onClick={ev => toggleEvent(e, ev.currentTarget)}>
                         <Check on={e.done} size={12} />
                       </button>
-                      <button type="button" className="list-text" onClick={() => openSheet({ kind: 'event', event: e })}>{e.text}</button>
+                      <button type="button" className="list-text" onClick={() => openSheet({ kind: 'event', event: e })}>
+                        {e.text}
+                        {e.spanOf && <span className="span-tag">{e.spanFirst ? 'empieza' : e.spanLast ? 'último día' : 'sigue'}</span>}
+                        <EventMarks e={e} />
+                      </button>
+                      {e.link && !e.done && <JoinButton url={e.link} size="s" />}
                       {e.from && <span className="from-tag">pendiente</span>}
                       <PriorityMark value={e.priority} />
                     </motion.li>

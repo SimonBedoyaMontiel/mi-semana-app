@@ -54,9 +54,16 @@ export function WeekView() {
                 </button>
               ))}
               {(idx.get(d) ?? []).filter(e => !e.start).map(e => (
-                <button key={e.id} type="button" className={cx('pill-ev', e.done && 'is-done')} style={{ '--c': evColor(e) } as CSSProperties} onClick={() => openSheet({ kind: 'event', event: e })}>
+                <button
+                  key={e.id}
+                  type="button"
+                  className={cx('pill-ev', e.done && 'is-done', e.spanOf && 'is-span', e.spanFirst && 'span-first', e.spanLast && 'span-last')}
+                  style={{ '--c': evColor(e) } as CSSProperties}
+                  onClick={() => openSheet({ kind: 'event', event: e })}
+                >
                   <PriorityMark value={e.priority} />
                   <span>{e.text}</span>
+                  {e.link && <i className="pill-video" aria-label="Con enlace" />}
                 </button>
               ))}
             </div>

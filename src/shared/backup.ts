@@ -20,6 +20,7 @@ export interface BackupPayload {
   transactions?: AppData['transactions']
   subscriptions?: AppData['subscriptions']
   goals?: AppData['goals']
+  templates?: AppData['templates']
   budgets?: AppData['budgets']
 }
 
@@ -32,11 +33,11 @@ export const BACKUP_APP_ID = 'mi-semana'
 export const WEB_EXPORT_ID = 'mi-semana-web'
 
 export function toBackupFile(data: AppData, now = new Date()): string {
-  const { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews, accounts, transactions, subscriptions, goals, budgets } = data
+  const { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews, accounts, transactions, subscriptions, goals, budgets, templates } = data
   return JSON.stringify(
     {
       app: BACKUP_APP_ID, schema: 1, exportedAt: now.toISOString(),
-      data: { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews, accounts, transactions, subscriptions, goals, budgets },
+      data: { events, habits, habitLog, notes, journal, priorities, inbox, focus, reviews, accounts, transactions, subscriptions, goals, budgets, templates },
     },
     null,
     2,
@@ -114,7 +115,7 @@ const NativeBackup = z.object({
   data: AppDataSchema.pick({ events: true, habits: true, habitLog: true, notes: true }).extend(
     AppDataSchema.pick({
       journal: true, priorities: true, inbox: true, focus: true, reviews: true,
-      accounts: true, transactions: true, subscriptions: true, goals: true, budgets: true,
+      accounts: true, transactions: true, subscriptions: true, goals: true, budgets: true, templates: true,
     }).partial().shape,
   ),
 })
@@ -196,6 +197,7 @@ export function mergeBackup(base: AppData, inc: BackupPayload, at = Date.now()):
   const transactions = addNew(base.transactions, inc.transactions, 't')
   const subscriptions = addNew(base.subscriptions, inc.subscriptions, 'u')
   const goals = addNew(base.goals, inc.goals, 'g')
+  const templates = addNew(base.templates, inc.templates, 'x')
   const budgets = Object.keys(base.budgets).length || !inc.budgets ? base.budgets : inc.budgets
   if (budgets !== base.budgets) stamps['b:budgets'] = at
 
@@ -206,7 +208,7 @@ export function mergeBackup(base: AppData, inc: BackupPayload, at = Date.now()):
   return {
     data: {
       ...base, events: [...base.events, ...newEvents], habits: [...base.habits, ...newHabits], habitLog, notes,
-      journal, priorities, focus, reviews, inbox: [...base.inbox, ...newInbox], accounts, transactions, subscriptions, goals, budgets, stamps,
+      journal, priorities, focus, reviews, inbox: [...base.inbox, ...newInbox], accounts, transactions, subscriptions, goals, budgets, templates, stamps,
     },
     added: { events: newEvents.length, habits: newHabits.length, days },
   }

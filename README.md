@@ -13,6 +13,11 @@ Agenda de escritorio para Windows: calendario mensual, semana y día con horas d
 | Hábitos | Toca el círculo; los de varias veces al día suman de uno en uno |
 | Color y prioridad | En cada evento: un color propio (o el de su categoría) y prioridad alta, media o baja |
 | Repetir ciertos días | Repetir → **Días concretos**, con atajos «Entre semana» y «Fin de semana» |
+| Repeticiones | Cada día, semana, mes (el día 15 o «el segundo martes») o año; termina nunca, en una fecha o tras N veces. Al editar un día de una serie: **solo este**, **este y los siguientes** o **todos** |
+| Detalles del evento | Enlace de reunión con botón **Unirse** (Meet, Zoom, Teams…), lugar con mapa, invitados, descripción y subtareas |
+| Varios días | Horario → **Varios días** para viajes o vacaciones |
+| Plantillas y duplicar | En el evento: icono de marcador para guardarlo como plantilla e icono de copia para duplicarlo |
+| Entrada rápida | Entiende «mañana», «el viernes», «15/11», «cada martes y jueves», «10 veces», «a las 18» y pega el enlace de la reunión |
 | Festivos | Ajustes → General → **Días festivos**: Colombia, España, México, Argentina, Chile, Perú o Estados Unidos |
 | Prioridades del día | En «Hoy» o en el día: hasta tres cosas importantes; cumplirlas todas se celebra |
 | Pendientes | Las tareas sin hora que no hiciste pasan solas a hoy (se puede desactivar en Ajustes) |

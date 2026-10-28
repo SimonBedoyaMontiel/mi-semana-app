@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Variants } from 'motion/react'
-import type { CalendarEvent } from '@shared/model'
+import type { EventItem } from '@shared/events'
 import { DAYS, DAYS_SHORT, MONTHS, fromIso, monthMatrix, toIso } from '@shared/dates'
 import { evColor } from '@shared/events'
 import { dayProgress } from '@shared/habits'
@@ -33,7 +33,7 @@ const MonthCell = memo(function MonthCell({
   iso, i, out, today, past, events, done, total, morph, holiday, subs, currency,
 }: {
   iso: string; i: number; out: boolean; today: boolean; past: boolean
-  events: readonly CalendarEvent[]; done: number; total: number; morph: boolean; holiday?: string
+  events: readonly EventItem[]; done: number; total: number; morph: boolean; holiday?: string
   subs: readonly Subscription[]; currency: string
 }) {
   const d = fromIso(iso)
@@ -74,10 +74,15 @@ const MonthCell = memo(function MonthCell({
       {holiday && <span className="cell-hol">{Icon.star}<span>{holiday}</span></span>}
       <ul className="cell-evs">
         {events.slice(0, MAX_CHIPS).map(e => (
-          <li key={e.id} className={cx('cell-ev', e.done && 'is-done', e.priority && `is-${e.priority}`)} style={{ '--c': evColor(e) } as CSSProperties}>
+          <li
+            key={e.id}
+            className={cx('cell-ev', e.done && 'is-done', e.priority && `is-${e.priority}`, e.spanOf && 'is-span', e.spanFirst && 'span-first', e.spanLast && 'span-last')}
+            style={{ '--c': evColor(e) } as CSSProperties}
+          >
             <i />
             {e.start && <time>{e.start}</time>}
             <span>{e.text}</span>
+            {e.link && <b className="cell-video" aria-label="Con enlace" />}
             <PriorityMark value={e.priority} />
           </li>
         ))}
@@ -153,5 +158,5 @@ export function MonthView() {
   )
 }
 
-const EMPTY: readonly CalendarEvent[] = []
+const EMPTY: readonly EventItem[] = []
 const NO_SUBS: readonly Subscription[] = []

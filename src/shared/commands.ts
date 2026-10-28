@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  AccountSchema, BudgetsSchema, CalendarEventSchema, FocusSessionSchema, GoalSchema, SubscriptionSchema, TransactionSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema, ReviewSchema, SettingsSchema, TopSchema,
+  AccountSchema, BudgetsSchema, TemplateSchema, CalendarEventSchema, FocusSessionSchema, GoalSchema, SubscriptionSchema, TransactionSchema, HabitSchema, ISO_DATE, InboxItemSchema, JournalSchema, ReviewSchema, SettingsSchema, TopSchema,
 } from './model'
 
 const id = z.string().min(1).max(64)
@@ -39,6 +39,8 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('account.delete'), id, at }),
   z.object({ type: z.literal('goal.upsert'), item: GoalSchema, at }),
   z.object({ type: z.literal('goal.delete'), id, at }),
+  z.object({ type: z.literal('template.upsert'), item: TemplateSchema, at }),
+  z.object({ type: z.literal('template.delete'), id, at }),
   z.object({ type: z.literal('budgets.set'), budgets: BudgetsSchema, at }),
 ])
 

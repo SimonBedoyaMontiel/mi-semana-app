@@ -1,4 +1,4 @@
-import { Notification } from 'electron'
+import { Notification, shell } from 'electron'
 import type { AppData } from '@shared/model'
 import { remindersBetween } from '@shared/reminders'
 
@@ -35,7 +35,10 @@ export class ReminderService {
       if (this.fired.has(r.key)) continue
       this.fired.add(r.key)
       const n = new Notification({ title: r.title, body: r.body, icon: this.icon, silent: false })
-      n.on('click', () => this.onClick(r.date))
+      n.on('click', () => {
+        if (r.url && /^https?:\/\//i.test(r.url)) void shell.openExternal(r.url)
+        else this.onClick(r.date)
+      })
       n.show()
     }
     if (this.fired.size > 500) this.fired = new Set([...this.fired].slice(-200))

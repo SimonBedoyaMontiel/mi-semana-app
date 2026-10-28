@@ -15,7 +15,7 @@ export function carryOver(today: string): number {
   const data = st.data
   if (!data?.settings.carryOver) return 0
   const oldest = toIso(addDays(fromIso(today), -CARRY_DAYS))
-  const late = data.events.filter(e => !e.repeat && !e.start && !e.done && e.date < today && e.date >= oldest)
+  const late = data.events.filter(e => !e.repeat && !e.endDate && !e.start && !e.done && e.date < today && e.date >= oldest)
   if (!late.length) return 0
   const before: CalendarEvent[] = late.map(e => ({ ...e }))
   for (const e of late) st.dispatch({ type: 'event.upsert', event: { ...e, date: today, from: e.from ?? e.date } })

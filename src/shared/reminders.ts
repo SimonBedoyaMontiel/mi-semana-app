@@ -12,6 +12,8 @@ export interface Reminder {
   title: string
   body: string
   date: string
+  /** Meeting link: clicking the notice opens it. */
+  url?: string
 }
 
 const TIMED_SLOTS: readonly Exclude<Slot, 'cualquiera'>[] = ['manana', 'mediodia', 'tarde', 'noche']
@@ -42,7 +44,8 @@ export function remindersBetween(data: AppData, from: number, to: number): Remin
         at: t,
         date: e.date,
         title: e.text,
-        body: `${lead ? `Empieza en ${lead} min` : 'Empieza ahora'} · ${e.start}–${e.end}`,
+        body: `${lead ? `Empieza en ${lead} min` : 'Empieza ahora'} · ${e.start}–${e.end}${e.link ? ' · Toca para unirte' : e.location ? ` · ${e.location}` : ''}`,
+        ...(e.link ? { url: e.link } : {}),
       })
     }
   }

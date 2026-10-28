@@ -27,6 +27,8 @@ const EventBlock = memo(function EventBlock({ p, h0, hh, compact }: { p: PlacedE
   const top = ((p.startMin - h0 * 60) / 60) * hh
   const height = Math.max(20, ((p.endMin - p.startMin) / 60) * hh - 2)
   const short = p.endMin - p.startMin < 45
+  /** Sharing a narrow column with others: title only, and it opens up to the full width on hover. */
+  const tight = p.cols > (compact ? 1 : 2)
   return (
     <motion.div
       layoutId={`tl-${e.id}`}
@@ -35,12 +37,12 @@ const EventBlock = memo(function EventBlock({ p, h0, hh, compact }: { p: PlacedE
       tabIndex={0}
       role="button"
       aria-label={`${e.text}, de ${e.start} a ${e.end}${e.done ? ', hecho' : ''}`}
-      className={cx('ev', 'spot', e.done && 'is-done', short && 'is-short', compact && 'is-compact', e.priority && `is-${e.priority}`)}
+      className={cx('ev', 'spot', e.done && 'is-done', short && 'is-short', compact && 'is-compact', tight && 'is-tight', e.priority && `is-${e.priority}`)}
       style={{
         top,
         height,
-        left: `calc(${p.col} / ${p.cols} * 100% + 2px)`,
-        width: `calc(100% / ${p.cols} - 4px)`,
+        '--l': `calc(${p.col} / ${p.cols} * 100% + 2px)`,
+        '--w': `calc(100% / ${p.cols} - 4px)`,
         '--c': evColor(e),
       } as CSSProperties}
       initial={{ opacity: 0, y: -10, scale: 0.86, filter: 'blur(4px)' }}
